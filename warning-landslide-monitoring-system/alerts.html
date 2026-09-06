@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alerts — Warning and Landslide Monitoring System</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar-mount"></aside>
+  <div class="main-col">
+    <header class="topbar" id="topbar-mount"></header>
+    <main class="page">
+      <div class="page-head">
+        <div>
+          <h1>Alert Dashboard</h1>
+          <div class="desc">Early-warning notifications generated from risk analysis and live monitoring thresholds.</div>
+        </div>
+        <div class="chip-row">
+          <span class="chip active" data-filter="all">All</span>
+          <span class="chip" data-filter="critical">Critical</span>
+          <span class="chip" data-filter="high">High</span>
+          <span class="chip" data-filter="moderate">Moderate</span>
+          <span class="chip" data-filter="acknowledged">Acknowledged</span>
+        </div>
+      </div>
+
+      <div class="grid grid-3" style="margin-bottom:20px;">
+        <div class="stat-card c-crit"><div class="s-label">🔴 Critical Alerts</div><div class="s-value" id="cnt-critical">0</div></div>
+        <div class="stat-card c-high"><div class="s-label">🟠 High Alerts</div><div class="s-value" id="cnt-high">0</div></div>
+        <div class="stat-card c-mod"><div class="s-label">🟡 Moderate Alerts</div><div class="s-value" id="cnt-mod">0</div></div>
+      </div>
+
+      <div id="alerts-list"></div>
+    </main>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/alerts.js"></script>
+</body>
+</html>

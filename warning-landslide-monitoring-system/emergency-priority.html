@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Emergency Priority — Warning and Landslide Monitoring System</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar-mount"></aside>
+  <div class="main-col">
+    <header class="topbar" id="topbar-mount"></header>
+    <main class="page">
+      <div class="page-head">
+        <div>
+          <h1>Emergency Priority</h1>
+          <div class="desc">Locations ranked by combined risk score, road status and active alert volume to guide response allocation.</div>
+        </div>
+      </div>
+      <div id="priority-list"></div>
+    </main>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/emergency-priority.js"></script>
+</body>
+</html>

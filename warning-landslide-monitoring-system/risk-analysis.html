@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Risk Analysis — Warning and Landslide Monitoring System</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar-mount"></aside>
+  <div class="main-col">
+    <header class="topbar" id="topbar-mount"></header>
+    <main class="page">
+      <div class="page-head">
+        <div>
+          <h1>Risk Analysis</h1>
+          <div class="desc">Enter environmental readings to simulate a landslide risk score using the WLMS scoring model.</div>
+        </div>
+      </div>
+
+      <div class="grid" style="grid-template-columns: 1fr 1fr; align-items:start;">
+        <div class="panel">
+          <div class="panel-head"><h3>Environmental Inputs</h3><span class="tag">SIMULATION</span></div>
+          <div class="panel-pad">
+            <form id="risk-form">
+              <div class="field">
+                <label for="in-location">Location label</label>
+                <input type="text" id="in-location" value="East Sikkim">
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label for="in-rainfall">Rainfall — 24h (mm)</label>
+                  <input type="number" id="in-rainfall" value="182" min="0" max="400" required>
+                </div>
+                <div class="field">
+                  <label for="in-soil">Soil Moisture (%)</label>
+                  <input type="number" id="in-soil" value="78" min="0" max="100" required>
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label for="in-slope">Slope Angle (°)</label>
+                  <input type="number" id="in-slope" value="36" min="0" max="70" required>
+                </div>
+                <div class="field">
+                  <label for="in-elevation">Elevation (m)</label>
+                  <input type="number" id="in-elevation" value="1850" min="0" max="6000" required>
+                </div>
+              </div>
+              <div class="field">
+                <label for="in-history">Historical Landslides</label>
+                <select id="in-history">
+                  <option>Low</option>
+                  <option>Moderate</option>
+                  <option selected>High</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-primary btn-block">Analyze Risk</button>
+            </form>
+            <div class="demo-note">Scoring is computed client-side from weighted rainfall, soil moisture, slope, elevation and historical-incidence factors — a frontend simulation, not a live ML backend.</div>
+          </div>
+        </div>
+
+        <div class="panel" id="result-panel" style="display:none;">
+          <div class="panel-head"><h3>Analysis Result</h3><span class="tag" id="result-time"></span></div>
+          <div class="panel-pad">
+            <div class="risk-meter-wrap">
+              <div class="risk-meter">
+                <svg viewBox="0 0 220 130">
+                  <path class="track" d="M20,110 A90,90 0 0,1 200,110"/>
+                  <path class="arc-seg" stroke="#3ED07C" d="M20,110 A90,90 0 0,1 73,32"/>
+                  <path class="arc-seg" stroke="#F0C93D" d="M73,32 A90,90 0 0,1 110,20"/>
+                  <path class="arc-seg" stroke="#FF9A3D" d="M110,20 A90,90 0 0,1 158,36"/>
+                  <path class="arc-seg" stroke="#FF5252" d="M158,36 A90,90 0 0,1 200,110"/>
+                  <g class="needle" id="ra-needle">
+                    <line x1="110" y1="110" x2="110" y2="34" stroke="#E8EFF4" stroke-width="3" stroke-linecap="round"/>
+                    <circle class="needle-base" cx="110" cy="110" r="7"/>
+                  </g>
+                </svg>
+                <div class="readout">
+                  <div class="score" id="ra-score">0</div>
+                  <div class="of100">out of 100</div>
+                </div>
+              </div>
+            </div>
+            <div style="text-align:center; margin:6px 0 16px;">
+              <span class="badge" id="ra-badge"></span>
+            </div>
+            <div class="grid grid-2" style="margin-bottom:16px;">
+              <div class="stat-card"><div class="s-label">Confidence</div><div class="s-value" id="ra-confidence">—</div></div>
+              <div class="stat-card"><div class="s-label">Location</div><div class="s-value" style="font-size:16px;" id="ra-location">—</div></div>
+            </div>
+            <div class="panel panel-pad" style="background:var(--bg-raised);">
+              <div style="font-size:12px; color:var(--text-faint); margin-bottom:4px;">Recommendation</div>
+              <div id="ra-recommendation" style="font-weight:600; font-size:14px;"></div>
+            </div>
+            <div id="ra-alert-note" class="demo-note" style="display:none; margin-top:16px; border-color:var(--risk-crit); color:#ffb3b3;"></div>
+            <div style="display:flex; gap:10px; margin-top:16px;">
+              <a href="alerts.html" class="btn btn-outline btn-sm">View Alerts</a>
+              <a href="risk-map.html" class="btn btn-ghost btn-sm">Open Risk Map</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" id="placeholder-panel">
+          <div class="empty-state">
+            <div class="ic">📊</div>
+            <div>Run an analysis to see the computed risk score, confidence and recommendation here.</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/risk-analysis.js"></script>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Warning and Landslide Monitoring System</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar-mount"></aside>
+  <div class="main-col">
+    <header class="topbar" id="topbar-mount"></header>
+
+    <main class="page">
+      <div class="flow-strip">
+        <span class="fs-step done">1. Select location</span><span class="fs-arrow">→</span>
+        <span class="fs-step done">2. Review environmental data</span><span class="fs-arrow">→</span>
+        <span class="fs-step" id="flow-3">3. Analyze risk</span><span class="fs-arrow">→</span>
+        <span class="fs-step" id="flow-4">4. Alert &amp; response</span>
+      </div>
+
+      <div class="location-banner">
+        <div>
+          <div class="loc-name" id="db-loc-name">East Sikkim</div>
+          <div class="loc-meta">Eastern Himalaya · Sikkim · Last synced <span id="db-sync-time">just now</span></div>
+        </div>
+        <span class="badge badge-crit" id="db-status-badge"><span class="badge-dot"></span> CRITICAL</span>
+        <div class="warn-line" id="db-warn-line">⚠️ Immediate monitoring required</div>
+      </div>
+
+      <div class="page-head">
+        <div>
+          <h1>Command Dashboard</h1>
+          <div class="desc">Live overview of environmental readings, risk status and response readiness.</div>
+        </div>
+        <select id="location-select" class="select-plain" style="max-width:220px;">
+        </select>
+      </div>
+
+      <div class="grid" style="grid-template-columns: 1.1fr 1.4fr; align-items:stretch; margin-bottom:20px;">
+        <div class="panel panel-pad" style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
+          <div class="panel-head" style="width:100%; padding:0 0 12px; border:none;"><h3>Current Risk Level</h3><span class="tag">0–100 SCALE</span></div>
+          <div class="risk-meter-wrap">
+            <div class="risk-meter">
+              <svg viewBox="0 0 220 130">
+                <path class="track" d="M20,110 A90,90 0 0,1 200,110"/>
+                <path class="arc-seg" stroke="#3ED07C" d="M20,110 A90,90 0 0,1 73,32"/>
+                <path class="arc-seg" stroke="#F0C93D" d="M73,32 A90,90 0 0,1 110,20"/>
+                <path class="arc-seg" stroke="#FF9A3D" d="M110,20 A90,90 0 0,1 158,36"/>
+                <path class="arc-seg" stroke="#FF5252" d="M158,36 A90,90 0 0,1 200,110"/>
+                <g class="needle" id="db-needle">
+                  <line x1="110" y1="110" x2="110" y2="34" stroke="#E8EFF4" stroke-width="3" stroke-linecap="round"/>
+                  <circle class="needle-base" cx="110" cy="110" r="7"/>
+                </g>
+              </svg>
+              <div class="readout">
+                <div class="score" id="db-score">87</div>
+                <div class="of100">out of 100</div>
+              </div>
+            </div>
+            <div class="risk-scale-legend">
+              <span><i style="background:#3ED07C"></i>Low 0–25</span>
+              <span><i style="background:#F0C93D"></i>Moderate 26–50</span>
+              <span><i style="background:#FF9A3D"></i>High 51–75</span>
+              <span><i style="background:#FF5252"></i>Critical 76–100</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-2" style="align-content:start;">
+          <div class="stat-card c-rain">
+            <div class="s-label">🌧️ Rainfall (24h)</div>
+            <div class="s-value" id="db-rainfall">182 <small>mm</small></div>
+            <div class="s-sub">Threshold for concern: 100mm</div>
+          </div>
+          <div class="stat-card c-soil">
+            <div class="s-label">💧 Soil Moisture</div>
+            <div class="s-value" id="db-soil">78<small>%</small></div>
+            <div class="s-sub">Saturation approaching critical</div>
+          </div>
+          <div class="stat-card c-slope">
+            <div class="s-label">⛰️ Slope Angle</div>
+            <div class="s-value" id="db-slope">36<small>°</small></div>
+            <div class="s-sub">Steep terrain gradient</div>
+          </div>
+          <div class="stat-card c-elev">
+            <div class="s-label">🗻 Elevation</div>
+            <div class="s-value" id="db-elev">1850<small>m</small></div>
+            <div class="s-sub">Above mean sea level</div>
+          </div>
+          <div class="stat-card c-hist">
+            <div class="s-label">📜 Historical Landslides</div>
+            <div class="s-value" id="db-hist" style="font-size:20px;">High</div>
+            <div class="s-sub">Recurrence recorded in region</div>
+          </div>
+          <div class="stat-card c-crit">
+            <div class="s-label">🚨 Active Alerts</div>
+            <div class="s-value" id="db-alerts-count">2</div>
+            <div class="s-sub"><a href="alerts.html">View alert queue →</a></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid" style="grid-template-columns: 1.6fr 1fr; align-items:start; margin-bottom:20px;">
+        <div class="panel">
+          <div class="panel-head"><h3>North-East Region (NER) Risk Map</h3><span class="tag">LIVE VIEW</span></div>
+          <div class="panel-pad map-wrap">
+            <div id="dashboard-map" style="height:380px;"></div>
+            <div class="map-legend">
+              <span><i style="background:#3ED07C"></i>Low</span>
+              <span><i style="background:#F0C93D"></i>Moderate</span>
+              <span><i style="background:#FF9A3D"></i>High</span>
+              <span><i style="background:#FF5252"></i>Critical</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Road Connectivity</h3><span class="tag">REGIONAL</span></div>
+          <div class="panel-pad">
+            <div class="bar-row"><div class="b-label">🟢 Open</div><div class="bar-track"><div class="bar-fill" style="width:68%;background:var(--risk-low)"></div></div><div class="b-pct">68%</div></div>
+            <div class="bar-row"><div class="b-label">🟠 At Risk</div><div class="bar-track"><div class="bar-fill" style="width:22%;background:var(--risk-high)"></div></div><div class="b-pct">22%</div></div>
+            <div class="bar-row"><div class="b-label">🔴 Blocked</div><div class="bar-track"><div class="bar-fill" style="width:10%;background:var(--risk-crit)"></div></div><div class="b-pct">10%</div></div>
+            <hr class="sep">
+            <a href="road-monitoring.html" class="btn btn-ghost btn-sm btn-block">Open road monitoring →</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid" style="grid-template-columns: 1fr 1fr; align-items:start;">
+        <div class="panel">
+          <div class="panel-head"><h3>Historical Landslides — East Sikkim</h3><span class="tag">TREND</span></div>
+          <div class="panel-pad"><canvas id="db-hist-chart" height="180"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Emergency Priority Snapshot</h3><span class="tag">RANKED</span></div>
+          <div class="panel-pad" id="db-priority-list"></div>
+        </div>
+      </div>
+
+      <div style="margin-top:22px; display:flex; gap:12px; flex-wrap:wrap;">
+        <a href="risk-analysis.html" class="btn btn-primary">Run risk analysis for this location</a>
+        <a href="field-reports.html" class="btn btn-outline">Submit field report</a>
+        <a href="risk-map.html" class="btn btn-ghost">Open full GIS map</a>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/mapcommon.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>

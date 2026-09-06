@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Risk Map — Warning and Landslide Monitoring System</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar-mount"></aside>
+  <div class="main-col">
+    <header class="topbar" id="topbar-mount"></header>
+    <main class="page">
+      <div class="page-head">
+        <div>
+          <h1>GIS Risk Map</h1>
+          <div class="desc">Interactive terrain risk overview across monitored North-East Region locations.</div>
+        </div>
+        <div class="chip-row" id="map-search-chips"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-pad map-wrap">
+          <div id="gis-map" style="height:600px;"></div>
+          <div class="map-layers-panel">
+            <div class="lyr-title">Map Layers</div>
+            <label><input type="checkbox" checked id="lyr-riskzones"> Risk Zones</label>
+            <label><input type="checkbox" checked id="lyr-locations"> Monitoring Locations</label>
+            <label><input type="checkbox" id="lyr-historical"> Historical Landslides</label>
+            <label><input type="checkbox" id="lyr-reports"> Field Reports</label>
+            <label><input type="checkbox" id="lyr-roads"> Roads</label>
+            <label><input type="checkbox" id="lyr-emergency"> Emergency Centers</label>
+          </div>
+          <div class="map-legend">
+            <span><i style="background:#3ED07C"></i>Low</span>
+            <span><i style="background:#F0C93D"></i>Moderate</span>
+            <span><i style="background:#FF9A3D"></i>High</span>
+            <span><i style="background:#FF5252"></i>Critical</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-4" style="margin-top:20px;" id="map-loc-cards"></div>
+    </main>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/mapcommon.js"></script>
+<script src="js/map.js"></script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather — Warning and Landslide Monitoring System</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar-mount"></aside>
+  <div class="main-col">
+    <header class="topbar" id="topbar-mount"></header>
+    <main class="page">
+      <div class="page-head">
+        <div>
+          <h1>Weather Conditions</h1>
+          <div class="desc">Simulated weather readouts feeding into the landslide risk model. Demo data — not a live forecast feed.</div>
+        </div>
+        <select id="weather-loc-select" class="select-plain" style="max-width:220px;"></select>
+      </div>
+
+      <div class="panel panel-pad" style="margin-bottom:20px;">
+        <div class="weather-hero">
+          <div class="weather-icon" id="w-icon">🌧️</div>
+          <div>
+            <div class="wtemp" id="w-temp">18°C</div>
+            <div class="text-dim" id="w-desc">Heavy rain, overcast skies</div>
+          </div>
+          <div style="margin-left:auto; text-align:right;">
+            <div class="text-faint" style="font-size:12px;">Rainfall (24h)</div>
+            <div class="mono" style="font-size:22px; font-weight:700;" id="w-rain">182 mm</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-4" style="margin-bottom:20px;">
+        <div class="stat-card c-rain"><div class="s-label">🌧️ Rainfall (24h)</div><div class="s-value" id="w-rain2">182<small>mm</small></div></div>
+        <div class="stat-card c-soil"><div class="s-label">💧 Humidity</div><div class="s-value" id="w-humidity">86<small>%</small></div></div>
+        <div class="stat-card"><div class="s-label">💨 Wind Speed</div><div class="s-value" id="w-wind">14<small>km/h</small></div></div>
+        <div class="stat-card"><div class="s-label">🌡️ Temperature</div><div class="s-value" id="w-temp2">18<small>°C</small></div></div>
+      </div>
+
+      <div class="panel panel-pad">
+        <div class="panel-head" style="padding:0 0 14px; border:none;"><h3>7-Day Rainfall Outlook</h3></div>
+        <canvas id="w-forecast" height="180"></canvas>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/weather.js"></script>
+</body>
+</html>

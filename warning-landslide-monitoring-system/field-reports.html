@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Field Reports — Warning and Landslide Monitoring System</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar-mount"></aside>
+  <div class="main-col">
+    <header class="topbar" id="topbar-mount"></header>
+    <main class="page">
+      <div class="page-head">
+        <div>
+          <h1>Field Reporting</h1>
+          <div class="desc">Submit ground observations from the field — cracks, slope movement, landslides or road blockages.</div>
+        </div>
+      </div>
+
+      <div class="grid" style="grid-template-columns:1fr 1.1fr; align-items:start;">
+        <div class="panel">
+          <div class="panel-head"><h3>New Field Report</h3><span class="tag">GEOLOCATION ENABLED</span></div>
+          <div class="panel-pad">
+            <div class="form-success" id="fr-success">✅ Field report submitted successfully.</div>
+            <form id="report-form">
+              <div class="field">
+                <label for="fr-location">Location name</label>
+                <input type="text" id="fr-location" placeholder="e.g. East Sikkim — Rongli sector" required>
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label for="fr-lat">Latitude</label>
+                  <input type="text" id="fr-lat" placeholder="27.3389" required>
+                </div>
+                <div class="field">
+                  <label for="fr-lng">Longitude</label>
+                  <input type="text" id="fr-lng" placeholder="88.6065" required>
+                </div>
+              </div>
+              <button type="button" class="btn btn-ghost btn-sm" style="margin-bottom:16px;" onclick="useMyLocation()">📍 Use My Location</button>
+
+              <div class="field">
+                <label for="fr-type">Report type</label>
+                <select id="fr-type">
+                  <option>Crack</option>
+                  <option>Slope Movement</option>
+                  <option>Landslide</option>
+                  <option>Road Blockage</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="fr-desc">Description</label>
+                <textarea id="fr-desc" rows="4" placeholder="Describe what was observed…" required></textarea>
+              </div>
+              <div class="field">
+                <label>Photo upload</label>
+                <div class="upload-box" onclick="document.getElementById('fr-photo').click()">
+                  📷 Click to upload a photo, or drag one here
+                </div>
+                <input type="file" id="fr-photo" accept="image/*" style="display:none;" onchange="previewPhoto(event)">
+                <img id="fr-preview" class="img-preview">
+              </div>
+              <button type="submit" class="btn btn-primary btn-block">Submit Report</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Submitted Reports</h3><span class="tag" id="fr-count">0 total</span></div>
+          <div class="panel-pad" id="reports-list" style="max-height:640px; overflow-y:auto;"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/field-reports.js"></script>
+</body>
+</html>

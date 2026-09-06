@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Road Monitoring — Warning and Landslide Monitoring System</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar-mount"></aside>
+  <div class="main-col">
+    <header class="topbar" id="topbar-mount"></header>
+    <main class="page">
+      <div class="page-head">
+        <div>
+          <h1>Road Monitoring</h1>
+          <div class="desc">Connectivity status of key highways and access roads across monitored regions.</div>
+        </div>
+        <div class="chip-row">
+          <span class="chip active" data-filter="all">All roads</span>
+          <span class="chip" data-filter="open">Open</span>
+          <span class="chip" data-filter="at-risk">At Risk</span>
+          <span class="chip" data-filter="blocked">Blocked</span>
+        </div>
+      </div>
+
+      <div class="grid" style="grid-template-columns: 1fr 1.3fr; margin-bottom:20px; align-items:start;">
+        <div class="panel panel-pad">
+          <div class="panel-head" style="padding:0 0 14px; border:none;"><h3>Overall Connectivity</h3></div>
+          <canvas id="road-donut" height="220"></canvas>
+          <div style="display:flex; justify-content:center; gap:16px; margin-top:12px; font-size:12.5px;">
+            <span class="text-dim">🟢 Open 68%</span>
+            <span class="text-dim">🟠 At Risk 22%</span>
+            <span class="text-dim">🔴 Blocked 10%</span>
+          </div>
+        </div>
+        <div class="grid grid-3">
+          <div class="stat-card c-low"><div class="s-label">🟢 Open Roads</div><div class="s-value">68<small>%</small></div><div class="s-sub">Clear connectivity, routine patrol</div></div>
+          <div class="stat-card c-high"><div class="s-label">🟠 At Risk</div><div class="s-value">22<small>%</small></div><div class="s-sub">Elevated caution, escort advised</div></div>
+          <div class="stat-card c-crit"><div class="s-label">🔴 Blocked</div><div class="s-value">10<small>%</small></div><div class="s-sub">Impassable, rerouting active</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Road Segments</h3><span class="tag" id="road-count">0 segments</span></div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>Segment</th><th>Location</th><th>Status</th><th>Last Update</th><th>Note</th></tr></thead>
+            <tbody id="road-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/road-monitoring.js"></script>
+</body>
+</html>

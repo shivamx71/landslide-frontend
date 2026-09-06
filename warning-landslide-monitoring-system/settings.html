@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settings — Warning and Landslide Monitoring System</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar-mount"></aside>
+  <div class="main-col">
+    <header class="topbar" id="topbar-mount"></header>
+    <main class="page">
+      <div class="page-head">
+        <div>
+          <h1>Settings</h1>
+          <div class="desc">Manage your profile, appearance and notification preferences. All settings persist locally in this browser.</div>
+        </div>
+      </div>
+
+      <div class="grid" style="grid-template-columns:1fr 1fr; align-items:start;">
+        <div class="panel">
+          <div class="panel-head"><h3>Profile</h3></div>
+          <div class="panel-pad" id="profile-block"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Appearance</h3></div>
+          <div class="panel-pad">
+            <div class="settings-row">
+              <div>
+                <div class="sr-title">Theme</div>
+                <div class="sr-desc">Dashboard is optimised for a dark command-center theme.</div>
+              </div>
+              <div class="theme-swatch">
+                <button style="background:#0A0F14;" class="active" data-theme="dark" title="Dark"></button>
+                <button style="background:#EDEFF1;" data-theme="light" title="Light (preview only)"></button>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="sr-title">Language</div>
+                <div class="sr-desc">Interface language for labels and reports.</div>
+              </div>
+              <select id="lang-select" class="select-plain" style="max-width:180px;"><option value="en">English</option><option value="hi">हिन्दी (Hindi)</option><option value="ne">नेपाली (Nepali)</option></select>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Notifications</h3></div>
+          <div class="panel-pad">
+            <div class="settings-row">
+              <div><div class="sr-title">Critical alert push</div><div class="sr-desc">Immediate notification for CRITICAL severity alerts.</div></div>
+              <label class="switch"><input type="checkbox" id="notif-critical" checked><span class="slider"></span></label>
+            </div>
+            <div class="settings-row">
+              <div><div class="sr-title">High risk advisory</div><div class="sr-desc">Notify when a location crosses into HIGH risk.</div></div>
+              <label class="switch"><input type="checkbox" id="notif-high" checked><span class="slider"></span></label>
+            </div>
+            <div class="settings-row">
+              <div><div class="sr-title">Daily summary</div><div class="sr-desc">Digest of risk changes and field reports each morning.</div></div>
+              <label class="switch"><input type="checkbox" id="notif-daily"><span class="slider"></span></label>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Data &amp; Storage</h3></div>
+          <div class="panel-pad">
+            <p class="text-dim" style="font-size:13px;">This demo stores users, field reports, alerts and preferences in your browser's LocalStorage. No data leaves your device.</p>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;">
+              <button class="btn btn-outline btn-sm" onclick="exportData()">Export data as JSON</button>
+              <button class="btn btn-danger btn-sm" onclick="resetDemoData()">Reset demo data</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/settings.js"></script>
+</body>
+</html>

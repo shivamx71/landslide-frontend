@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Historical Landslides — Warning and Landslide Monitoring System</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar-mount"></aside>
+  <div class="main-col">
+    <header class="topbar" id="topbar-mount"></header>
+    <main class="page">
+      <div class="page-head">
+        <div>
+          <h1>Historical Landslides</h1>
+          <div class="desc">Recorded incidents across monitored regions, 2019–2025.</div>
+        </div>
+      </div>
+
+      <div class="grid grid-2" style="margin-bottom:20px;">
+        <div class="panel panel-pad">
+          <div class="panel-head" style="padding:0 0 14px; border:none;"><h3>Landslides by Year</h3></div>
+          <canvas id="chart-year" height="200"></canvas>
+        </div>
+        <div class="panel panel-pad">
+          <div class="panel-head" style="padding:0 0 14px; border:none;"><h3>Severity Distribution</h3></div>
+          <canvas id="chart-severity" height="200"></canvas>
+        </div>
+      </div>
+
+      <div class="panel panel-pad" style="margin-bottom:20px;">
+        <div class="panel-head" style="padding:0 0 14px; border:none;"><h3>Incidents by Location</h3></div>
+        <div id="loc-bars"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Incident Log</h3><span class="tag" id="hist-count"></span></div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>Year</th><th>Location</th><th>Severity</th><th>Deaths</th><th>Roads Blocked</th></tr></thead>
+            <tbody id="hist-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/historical.js"></script>
+</body>
+</html>

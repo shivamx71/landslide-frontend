@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register — Warning and Landslide Monitoring System</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="auth-shell">
+  <div class="auth-visual">
+    <svg class="contour" viewBox="0 0 600 800" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M-20 200 Q150 150 300 220 T650 180" stroke="#2FB8A6" stroke-width="1" fill="none" opacity="0.25"/>
+      <path d="M-20 280 Q150 230 300 300 T650 260" stroke="#2FB8A6" stroke-width="1" fill="none" opacity="0.2"/>
+      <path d="M-20 360 Q150 310 300 380 T650 340" stroke="#2FB8A6" stroke-width="1" fill="none" opacity="0.15"/>
+      <path d="M-20 620 Q150 700 300 610 T650 660" stroke="#FF5252" stroke-width="1" fill="none" opacity="0.18"/>
+    </svg>
+    <div class="brand-mark">
+      <svg class="logo-dot" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="20" cy="20" r="19" fill="#10171E" stroke="#2FB8A6" stroke-width="1.4"/>
+        <path d="M6 26L15 14L21 21L27 12L34 26" stroke="#2FB8A6" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="27" cy="12" r="2.4" fill="#FF5252"/>
+      </svg>
+      <span>Warning and Landslide Monitoring System</span>
+    </div>
+    <div class="pitch">
+      <h1>Join the monitoring network.</h1>
+      <p>Register as a field coordinator or observer to submit ground reports, track slope conditions and receive early-warning alerts for your region.</p>
+    </div>
+    <div class="live-readout">
+      <div class="stat"><div class="val">13</div><div class="lbl">Monitoring modules</div></div>
+      <div class="stat"><div class="val">24/7</div><div class="lbl">Alert coverage</div></div>
+      <div class="stat"><div class="val">5</div><div class="lbl">Regions tracked</div></div>
+    </div>
+  </div>
+
+  <div class="auth-form-side">
+    <div class="auth-card">
+      <div class="mobile-brand">
+        <svg class="logo-dot" width="30" height="30" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="20" cy="20" r="19" fill="#10171E" stroke="#2FB8A6" stroke-width="1.4"/>
+          <path d="M6 26L15 14L21 21L27 12L34 26" stroke="#2FB8A6" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="27" cy="12" r="2.4" fill="#FF5252"/>
+        </svg>
+        <strong style="font-family:var(--font-display)">WLMS</strong>
+      </div>
+
+      <h2>Create an account</h2>
+      <p class="sub">Registration is stored locally in this demo — no server required.</p>
+
+      <div class="form-error" id="reg-error"></div>
+      <div class="form-success" id="reg-success"></div>
+
+      <form id="register-form" onsubmit="handleRegister(event)">
+        <div class="field">
+          <label for="reg-name">Full name</label>
+          <input type="text" id="reg-name" placeholder="Anjali Sharma" required>
+        </div>
+        <div class="field">
+          <label for="reg-email">Work email</label>
+          <input type="email" id="reg-email" placeholder="you@disastermgmt.gov.in" required>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="reg-org">Organisation</label>
+            <input type="text" id="reg-org" placeholder="District DM Authority">
+          </div>
+          <div class="field">
+            <label for="reg-role">Role</label>
+            <select id="reg-role">
+              <option>Field Coordinator</option>
+              <option>Disaster Management Officer</option>
+              <option>GIS Analyst</option>
+              <option>Community Observer</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="reg-password">Password</label>
+            <input type="password" id="reg-password" placeholder="Min. 6 characters" required>
+          </div>
+          <div class="field">
+            <label for="reg-confirm">Confirm password</label>
+            <input type="password" id="reg-confirm" placeholder="Re-enter password" required>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Create account</button>
+      </form>
+
+      <div class="auth-foot">Already registered? <a href="index.html">Sign in</a></div>
+    </div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+</body>
+</html>
