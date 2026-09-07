@@ -6,21 +6,32 @@ initShell({ active: 'risk-analysis.html', title: 'Risk Analysis', crumb: 'Monito
 
 const API_BASE = typeof BACKEND_URL !== 'undefined' ? BACKEND_URL : "https://sih-landslide-backend-kzl9.onrender.com";
 
-// Prefill from query param location, if present
-(function prefillFromQuery(){
+// District Geotechnical Baseline Presets (User ko number dhundne na padein)
+const DISTRICT_PRESETS = {
+  'east-sikkim': { name: 'East Sikkim', rain: 182, soil: 78, slope: 36, elev: 1850, hist: 'High' },
+  'gangtok':     { name: 'Gangtok',     rain: 121, soil: 61, slope: 27, elev: 1650, hist: 'Moderate' },
+  'aizawl':      { name: 'Aizawl',      rain: 143, soil: 69, slope: 31, elev: 1132, hist: 'High' },
+  'kohima':      { name: 'Kohima',      rain: 132, soil: 70, slope: 29, elev: 1444, hist: 'Moderate' },
+  'shillong':    { name: 'Shillong',    rain: 96,  soil: 52, slope: 22, elev: 1496, hist: 'Low' }
+};
+
+// Form mein automatically values bharne ka helper
+function autoFillInputs(presetKey) {
+  const p = DISTRICT_PRESETS[presetKey] || DISTRICT_PRESETS['east-sikkim'];
+  
+  if (document.getElementById('in-location')) document.getElementById('in-location').value = p.name;
+  if (document.getElementById('in-rainfall')) document.getElementById('in-rainfall').value = p.rain;
+  if (document.getElementById('in-soil')) document.getElementById('in-soil').value = p.soil;
+  if (document.getElementById('in-slope')) document.getElementById('in-slope').value = p.slope;
+  if (document.getElementById('in-elevation')) document.getElementById('in-elevation').value = p.elev;
+  if (document.getElementById('in-history')) document.getElementById('in-history').value = p.hist;
+}
+
+// 1. Initial Auto-Fill: Page khulte hi default values khud bhar jayengi
+(function initAutoFill(){
   const params = new URLSearchParams(window.location.search);
-  const locId = params.get('loc');
-  if (locId){
-    const loc = getLocationById(locId);
-    if (loc) {
-      document.getElementById('in-location').value = loc.name;
-      document.getElementById('in-rainfall').value = loc.rainfall;
-      document.getElementById('in-soil').value = loc.soilMoisture;
-      document.getElementById('in-slope').value = loc.slope;
-      document.getElementById('in-elevation').value = loc.elevation;
-      document.getElementById('in-history').value = loc.historicalLandslides;
-    }
-  }
+  const locId = params.get('loc') || 'east-sikkim';
+  autoFillInputs(locId);
 })();
 
 function setRAneedle(score){
@@ -29,27 +40,29 @@ function setRAneedle(score){
   if (needle) needle.style.transform = `rotate(${angle}deg)`;
 }
 
+// 2. FORM SUBMISSION -> FASTAPI ML MODEL (/predict)
 document.getElementById('risk-form').addEventListener('submit', async function(e){
   e.preventDefault();
+  
   const locationName = document.getElementById('in-location').value.trim() || 'Custom Sector';
   const inputs = {
-    rainfall: Number(document.getElementById('in-rainfall').value),
-    soilMoisture: Number(document.getElementById('in-soil').value),
-    slope: Number(document.getElementById('in-slope').value),
-    elevation: Number(document.getElementById('in-elevation').value),
-    historicalLandslides: document.getElementById('in-history').value
+    rainfall: Number(document.getElementById('in-rainfall').value) || 100,
+    soilMoisture: Number(document.getElementById('in-soil').value) || 50,
+    slope: Number(document.getElementById('in-slope').value) || 25,
+    elevation: Number(document.getElementById('in-elevation').value) || 1200,
+    historicalLandslides: document.getElementById('in-history').value || 'Moderate'
   };
 
   let result;
-  let dataSource = "SIH FastAPI AI Engine";
+  let dataSource = "SIH FastAPI ML Model";
 
-  // ---------------- FASTAPI ML MODEL INTEGRATION (POST /predict) ----------------
   try {
     const histMap = { 'Low': 2, 'Moderate': 6, 'High': 12 };
     const histVal = typeof inputs.historicalLandslides === 'number'
       ? inputs.historicalLandslides
       : (histMap[inputs.historicalLandslides] || 6);
 
+    // Call FastAPI /predict endpoint
     const response = await fetch(`${API_BASE}/predict`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -70,14 +83,14 @@ document.getElementById('risk-form').addEventListener('submit', async function(e
         level: (data.risk_level || 'moderate').toLowerCase(),
         confidence: Math.round(75 + (data.risk_score / 100) * 20)
       };
-      console.log(">>> [FASTAPI] AI Prediction Model Result:", result);
+      console.log(">>> [FASTAPI ML MODEL] Prediction Success:", result);
     } else {
       throw new Error("Backend response error");
     }
   } catch (err) {
-    console.warn(">>> [FALLBACK] Backend unreachable, using heuristic engine:", err);
+    console.warn("Using fallback heuristic engine:", err);
     result = computeRiskScore(inputs);
-    dataSource = "Local Engine";
+    dataSource = "Local Fallback Engine";
   }
 
   const rm = riskMeta(result.level);
@@ -92,35 +105,8 @@ document.getElementById('risk-form').addEventListener('submit', async function(e
   document.getElementById('ra-confidence').textContent = result.confidence + '%';
   document.getElementById('ra-location').textContent = locationName;
   document.getElementById('ra-recommendation').textContent = recommendationFor(result.level);
+  
   setTimeout(() => setRAneedle(result.score), 100);
-
-  // persist analysis record
-  const analyses = lsGet(LS_KEYS.ANALYSES, []);
-  analyses.unshift({ id: uid('AN'), location: locationName, ...inputs, ...result, ranAt: new Date().toISOString() });
-  lsSet(LS_KEYS.ANALYSES, analyses.slice(0, 50));
-
-  const alertNote = document.getElementById('ra-alert-note');
-  if (result.level === 'high' || result.level === 'critical'){
-    const alerts = lsGet(LS_KEYS.ALERTS, []);
-    alerts.unshift({
-      id: uid('AL'),
-      location: locationName,
-      title: result.level === 'critical' ? 'LANDSLIDE WARNING' : 'ELEVATED RISK ADVISORY',
-      message: result.level === 'critical'
-        ? 'High-risk conditions detected. Saturated slope, rainfall and terrain factors indicate imminent landslide hazard.'
-        : 'Rising environmental readings indicate an elevated landslide risk requiring closer observation.',
-      riskScore: result.score,
-      severity: result.level,
-      createdAt: new Date().toISOString(),
-      status: 'active'
-    });
-    lsSet(LS_KEYS.ALERTS, alerts);
-    alertNote.style.display = 'block';
-    alertNote.innerHTML = `⚠️ <b>Alert automatically generated</b> — a ${result.level.toUpperCase()} severity alert for ${locationName} has been logged.`;
-    if (typeof toast === 'function') toast('New ' + result.level.toUpperCase() + ' alert generated for ' + locationName, 'warn');
-  } else {
-    alertNote.style.display = 'none';
-  }
 
   panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 });
