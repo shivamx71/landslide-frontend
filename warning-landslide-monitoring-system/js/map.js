@@ -18,6 +18,7 @@ const layerGroups = {
 };
 
 let liveDistrictsList = [];
+window._districtMarkers = {};
 
 // Helper: Custom Rich Popup for Live District Pins
 function createLivePopupHtml(l) {
@@ -96,7 +97,6 @@ async function loadGeoJsonBoundaries() {
             <div class="prow"><span>State</span><b>${sName}</b></div>
             <div class="prow"><span>Hazard Tier</span><b>${rLvl}</b></div>
             <div class="prow"><span>Risk Score</span><b>${rScore} / 100</b></div>
-            <div class="prow"><span>GIS Standard</span><b>OGC / WGS 84</b></div>
             <div style="margin-top:8px;font-size:11px;color:var(--text-faint);">Source: Survey of India / ISRO NRSC Atlas</div>
           </div>
         `);
@@ -104,9 +104,8 @@ async function loadGeoJsonBoundaries() {
     });
 
     geoLayer.addTo(layerGroups.riskzones);
-    console.log(">>> [GIS] North-East Choropleth Boundary Polygons loaded!");
   } catch (err) {
-    console.warn(">>> [GIS] Boundary fallback mode:", err);
+    console.warn("Boundary fallback mode:", err);
   }
 }
 loadGeoJsonBoundaries();
@@ -170,9 +169,8 @@ async function loadLiveDistrictMarkers() {
     if (!Array.isArray(locations) || locations.length === 0) return;
 
     liveDistrictsList = locations;
-
-    // Clear old markers before updating (prevents duplicates)
     layerGroups.locations.clearLayers();
+    window._districtMarkers = {};
 
     locations.forEach(loc => {
       const lat = Number(loc.latitude);
@@ -181,7 +179,6 @@ async function loadLiveDistrictMarkers() {
       const isHighRisk = loc.risk_score >= 55;
       const isCritical = loc.risk_score >= 75;
 
-      // Draw dynamic hazard circle for High & Critical zones
       if (isHighRisk) {
         L.circle([lat, lon], {
           radius: isCritical ? 24000 : 16000,
@@ -193,47 +190,61 @@ async function loadLiveDistrictMarkers() {
         }).addTo(layerGroups.riskzones);
       }
 
-      // Live Colored Pin Marker
       const markerIcon = (typeof coloredIcon === 'function') 
         ? coloredIcon(color, 28) 
-        : L.divIcon({ className: 'custom-pin', html: `<div style="background:${color};width:14px;height:14px;border-radius:50%;border:2px solid white;"></div>` });
+        : undefined;
 
       const marker = L.marker([lat, lon], { icon: markerIcon });
       marker.bindPopup(createLivePopupHtml(loc));
       marker.addTo(layerGroups.locations);
+
+      // Save marker reference for auto-popup
+      window._districtMarkers[loc.id] = marker;
     });
 
-    // Update Bottom Summary Cards with 100% Real Live Telemetry
     renderBottomLocationCards(locations);
-
-    // Update Quick-Jump Search Chips
     renderSearchChips(locations);
 
-    console.log(`>>> [GIS MAP] Loaded ${locations.length} live satellite district markers!`);
+    // Deep linking flyTo check
+    handleQueryNavigation(locations);
 
   } catch (e) {
-    console.warn("Live markers warming up, using demo fallback pins:", e);
-    renderFallbackPins();
+    console.warn("Live markers error, using fallback:", e);
   }
 }
 
-// Fallback Initial Pins
-function renderFallbackPins() {
-  if (typeof DEMO_LOCATIONS === 'undefined') return;
-  DEMO_LOCATIONS.forEach(loc => {
-    const hex = (typeof RISK_HEX !== 'undefined') ? (RISK_HEX[loc.riskLevel] || '#ca8a04') : '#ca8a04';
-    const marker = L.marker([loc.lat, loc.lng], { icon: coloredIcon(hex, 28) });
-    if (typeof locationPopupHtml === 'function') marker.bindPopup(locationPopupHtml(loc));
-    marker.addTo(layerGroups.locations);
-  });
+// ---------------- 4. DEEP-LINK FLYTO CAMERA & AUTO-POPUP ----------------
+function handleQueryNavigation(locations) {
+  const params = new URLSearchParams(window.location.search);
+  const locId = params.get('loc');
+  if (!locId || !locations || !locations.length) return;
+
+  const target = locations.find(l => String(l.id) === String(locId) || String(l.name).toLowerCase().includes(String(locId).toLowerCase()));
+  
+  if (target) {
+    console.log(`>>> [MAP NAVIGATION] Flying to district: ${target.name}`);
+    setTimeout(() => {
+      // Smooth cinematic flyTo straight to the selected location!
+      map.flyTo([Number(target.latitude), Number(target.longitude)], 10.5, { 
+        duration: 1.8,
+        easeLinearity: 0.25 
+      });
+
+      // Automatically pop open the district's popup after zoom
+      setTimeout(() => {
+        if (window._districtMarkers && window._districtMarkers[target.id]) {
+          window._districtMarkers[target.id].openPopup();
+        }
+      }, 1900);
+    }, 400);
+  }
 }
 
-// Render Summary Cards Below Map with Real Live Data
+// Summary cards below map
 function renderBottomLocationCards(locations) {
   const cardsEl = document.getElementById('map-loc-cards');
   if (!cardsEl) return;
 
-  // Show top 8 vulnerable districts first
   const sorted = [...locations].sort((a, b) => (b.risk_score || 0) - (a.risk_score || 0)).slice(0, 8);
 
   cardsEl.innerHTML = sorted.map(l => {
@@ -265,7 +276,7 @@ function renderBottomLocationCards(locations) {
   }).join('');
 }
 
-// Render Quick-Jump Chips for all Districts
+// Quick jump chips
 function renderSearchChips(locations) {
   const chipsEl = document.getElementById('map-search-chips');
   if (!chipsEl) return;
@@ -278,8 +289,7 @@ function renderSearchChips(locations) {
   ).join('');
 }
 
-// ---------------- 4. HISTORICAL LANDSLIDES, ROADS & REPORTS ----------------
-// Historical landslide points
+// ---------------- 5. HISTORICAL LANDSLIDES, ROADS & REPORTS ----------------
 const cityCoords = { 
   'East Sikkim':[27.3389,88.6065], 'Gangtok':[27.3314,88.6138], 
   'Aizawl':[23.7271,92.7176], 'Kohima':[25.6751,94.1086], 'Shillong':[25.5788,91.8933] 
@@ -299,7 +309,6 @@ if (typeof HISTORICAL_LANDSLIDES !== 'undefined') {
   });
 }
 
-// Live SQLite Incident Reports from FastAPI (/reports)
 async function renderAllFieldReports() {
   try {
     const res = await fetch(`${API_BASE}/reports`);
@@ -315,13 +324,10 @@ async function renderAllFieldReports() {
         });
       }
     }
-  } catch (e) {
-    console.warn("Field reports fallback:", e);
-  }
+  } catch (e) {}
 }
 renderAllFieldReports();
 
-// Road Connectivity Segments
 if (typeof ROAD_SEGMENTS !== 'undefined') {
   ROAD_SEGMENTS.forEach((r, i) => {
     const base = cityCoords[r.location];
@@ -335,7 +341,6 @@ if (typeof ROAD_SEGMENTS !== 'undefined') {
   });
 }
 
-// Emergency Response Units
 if (typeof EMERGENCY_CENTERS !== 'undefined') {
   EMERGENCY_CENTERS.forEach(c => {
     const icon = (typeof emergencyIcon === 'function') ? emergencyIcon() : undefined;
@@ -345,7 +350,6 @@ if (typeof EMERGENCY_CENTERS !== 'undefined') {
   });
 }
 
-// Layer checkboxes binding
 function bindLayerToggle(checkboxId, group) {
   const el = document.getElementById(checkboxId);
   if (el) {
@@ -361,24 +365,6 @@ bindLayerToggle('lyr-reports', layerGroups.reports);
 bindLayerToggle('lyr-roads', layerGroups.roads);
 bindLayerToggle('lyr-emergency', layerGroups.emergency);
 
-// Query Parameter Deep Linking
-(function handleQueryNavigation() {
-  const params = new URLSearchParams(window.location.search);
-  const locId = params.get('loc');
-  if (locId && liveDistrictsList.length) {
-    const target = liveDistrictsList.find(l => String(l.id) === String(locId));
-    if (target) {
-      setTimeout(() => {
-        map.flyTo([target.latitude, target.longitude], 10, { duration: 1.5 });
-      }, 500);
-    }
-  }
-})();
-
-// ---------------- 5. INITIAL EXECUTION & 24x7 POLLING ----------------
+// Initial Execution & 45s Polling
 loadLiveDistrictMarkers();
-
-// 24x7 live update every 45 seconds
-setInterval(() => {
-  loadLiveDistrictMarkers();
-}, 45000);
+setInterval(loadLiveDistrictMarkers, 45000);

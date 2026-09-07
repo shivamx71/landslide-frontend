@@ -330,3 +330,26 @@ upgradeToCitizenSelector();
   if (sel) sel.value = String(locParam);
   loadLiveTelemetryIntoForm(locParam, false);
 })();
+// ---------------- BIND "OPEN RISK MAP" BUTTON TO SELECTED DISTRICT ----------------
+function bindActionButtons() {
+  document.querySelectorAll('button').forEach(btn => {
+    if (btn.textContent.trim().includes('Open Risk Map')) {
+      btn.onclick = (e) => {
+        e.preventDefault();
+        const sel = document.getElementById('in-location');
+        const targetId = sel ? sel.value : '2';
+        window.location.href = `risk-map.html?loc=${targetId}`;
+      };
+    }
+    if (btn.textContent.trim().includes('View Alerts')) {
+      btn.onclick = (e) => {
+        e.preventDefault();
+        window.location.href = `alerts.html`;
+      };
+    }
+  });
+}
+
+// Initial Bind & Periodic Check
+bindActionButtons();
+setInterval(bindActionButtons, 1500);
