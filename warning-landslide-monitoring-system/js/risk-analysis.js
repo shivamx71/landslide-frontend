@@ -1,5 +1,6 @@
 /* =========================================================
-   risk-analysis.js — Citizen-Friendly NER District Risk Engine
+   risk-analysis.js — 100% Production AI Risk Diagnostic Engine
+   Dual Mode: Citizen Safety Decision + Geotechnical Simulator
    ========================================================= */
 
 initShell({ active: 'risk-analysis.html', title: 'Risk Analysis', crumb: 'Monitor / Risk Analysis' });
@@ -76,7 +77,7 @@ function upgradeToCitizenSelector() {
   select.className = locInput.className || 'input';
   select.style.cssText = 'width: 100%; padding: 10px 12px; background: #1e293b; color: #f8fafc; border: 1px solid var(--border); border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer;';
 
-  // Crisp readable text for each option
+  // Crisp readable options
   select.innerHTML = ALL_DISTRICTS.map(d => 
     `<option value="${d.id}" style="background:#1e293b; color:#f8fafc; font-weight:600; padding:8px;">${d.name}</option>`
   ).join('');
@@ -90,6 +91,8 @@ function upgradeToCitizenSelector() {
   parent.appendChild(techLabel);
 
   select.onchange = () => {
+    // Keep selection in session memory immediately
+    sessionStorage.setItem('wlms_focus_loc', String(select.value));
     loadLiveTelemetryIntoForm(select.value, true);
   };
 
@@ -315,41 +318,57 @@ document.getElementById('risk-form').addEventListener('submit', async function(e
 
     setTimeout(() => setRAneedle(result.score), 150);
 
+    // Re-bind action buttons now that result panel is visible!
+    bindActionButtons();
+
     panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 });
 
-// ---------------- INITIALIZE DUAL MODE ----------------
-upgradeToCitizenSelector();
-
-// Check URL query param e.g. ?loc=2
-(function init() {
-  const params = new URLSearchParams(window.location.search);
-  const locParam = params.get('loc') || '2';
-  const sel = document.getElementById('in-location');
-  if (sel) sel.value = String(locParam);
-  loadLiveTelemetryIntoForm(locParam, false);
-})();
-// ---------------- BIND "OPEN RISK MAP" BUTTON TO SELECTED DISTRICT ----------------
+// ---------------- 6. BULLETPROOF ACTION BUTTONS BINDER ----------------
 function bindActionButtons() {
   document.querySelectorAll('button').forEach(btn => {
-    if (btn.textContent.trim().includes('Open Risk Map')) {
+    const text = btn.textContent.trim();
+
+    if (text.includes('Open Risk Map')) {
+      // Inline onclick remove karo taaki unparameterized redirect na ho
+      btn.removeAttribute('onclick');
+      
       btn.onclick = (e) => {
         e.preventDefault();
+        e.stopPropagation();
+
         const sel = document.getElementById('in-location');
         const targetId = sel ? sel.value : '2';
-        window.location.href = `risk-map.html?loc=${targetId}`;
+
+        // Session storage aur URL dono mein lock karo
+        sessionStorage.setItem('wlms_focus_loc', String(targetId));
+        localStorage.setItem('wlms_active_location', String(targetId));
+
+        window.location.href = `risk-map.html?loc=${encodeURIComponent(targetId)}`;
       };
     }
-    if (btn.textContent.trim().includes('View Alerts')) {
+
+    if (text.includes('View Alerts')) {
+      btn.removeAttribute('onclick');
       btn.onclick = (e) => {
         e.preventDefault();
-        window.location.href = `alerts.html`;
+        e.stopPropagation();
+        window.location.href = 'alerts.html';
       };
     }
   });
 }
 
-// Initial Bind & Periodic Check
+// ---------------- INITIALIZE DUAL MODE ----------------
+upgradeToCitizenSelector();
 bindActionButtons();
-setInterval(bindActionButtons, 1500);
+
+// Check URL query param e.g. ?loc=2
+(function init() {
+  const params = new URLSearchParams(window.location.search);
+  const locParam = params.get('loc') || sessionStorage.getItem('wlms_focus_loc') || '2';
+  const sel = document.getElementById('in-location');
+  if (sel) sel.value = String(locParam);
+  loadLiveTelemetryIntoForm(locParam, false);
+})();

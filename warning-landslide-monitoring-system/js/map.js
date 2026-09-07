@@ -1,5 +1,5 @@
 /* =========================================================
-   map.js — 100% 24x7 Real-Time GIS Risk Map & Satellite View
+   map.js — 100% 24x7 Real-Time GIS Risk Map & Cinematic FlyTo
    ========================================================= */
 
 initShell({ active: 'risk-map.html', title: 'Risk Map', crumb: 'Monitor / Risk Map' });
@@ -45,7 +45,7 @@ function createLivePopupHtml(l) {
   `;
 }
 
-// ---------------- 1. GIS CHOROPLETH BOUNDARIES FROM FASTAPI (/geojson) ----------------
+// ---------------- 1. GIS CHOROPLETH BOUNDARIES (/geojson) ----------------
 async function loadGeoJsonBoundaries() {
   try {
     const res = await fetch(`${API_BASE}/geojson`);
@@ -198,42 +198,58 @@ async function loadLiveDistrictMarkers() {
       marker.bindPopup(createLivePopupHtml(loc));
       marker.addTo(layerGroups.locations);
 
-      // Save marker reference for auto-popup
-      window._districtMarkers[loc.id] = marker;
+      // Save marker references with both String and Number keys
+      window._districtMarkers[String(loc.id)] = marker;
+      window._districtMarkers[Number(loc.id)] = marker;
     });
 
     renderBottomLocationCards(locations);
     renderSearchChips(locations);
 
-    // Deep linking flyTo check
-    handleQueryNavigation(locations);
+    // Run Auto-FlyTo navigation
+    checkAndFlyToTarget(locations);
 
   } catch (e) {
-    console.warn("Live markers error, using fallback:", e);
+    console.warn("Live markers error, checking fallback:", e);
+    if (typeof DEMO_LOCATIONS !== 'undefined') {
+      checkAndFlyToTarget(DEMO_LOCATIONS);
+    }
   }
 }
 
-// ---------------- 4. DEEP-LINK FLYTO CAMERA & AUTO-POPUP ----------------
-function handleQueryNavigation(locations) {
+// ---------------- 4. BULLETPROOF FLYTO & AUTO-POPUP ----------------
+function checkAndFlyToTarget(locations) {
   const params = new URLSearchParams(window.location.search);
-  const locId = params.get('loc');
+  let locId = params.get('loc') || sessionStorage.getItem('wlms_focus_loc') || localStorage.getItem('wlms_active_location');
+
   if (!locId || !locations || !locations.length) return;
 
-  const target = locations.find(l => String(l.id) === String(locId) || String(l.name).toLowerCase().includes(String(locId).toLowerCase()));
-  
+  // Clear session focus so future manual map visits don't auto-zoom
+  sessionStorage.removeItem('wlms_focus_loc');
+
+  const target = locations.find(l => 
+    String(l.id) === String(locId) || 
+    String(l.name).toLowerCase().includes(String(locId).toLowerCase())
+  );
+
   if (target) {
-    console.log(`>>> [MAP NAVIGATION] Flying to district: ${target.name}`);
+    const lat = Number(target.latitude || target.lat);
+    const lon = Number(target.longitude || target.lng);
+    console.log(`>>> [MAP NAVIGATION FLYTO] Flying straight to: ${target.name} (${lat}, ${lon})`);
+
     setTimeout(() => {
-      // Smooth cinematic flyTo straight to the selected location!
-      map.flyTo([Number(target.latitude), Number(target.longitude)], 10.5, { 
+      // Cinematic zoom-in to location
+      map.flyTo([lat, lon], 11, { 
         duration: 1.8,
         easeLinearity: 0.25 
       });
 
-      // Automatically pop open the district's popup after zoom
+      // Automatically pop open popup after camera lands
       setTimeout(() => {
-        if (window._districtMarkers && window._districtMarkers[target.id]) {
-          window._districtMarkers[target.id].openPopup();
+        const m = window._districtMarkers[target.id] || window._districtMarkers[String(target.id)];
+        if (m) {
+          m.openPopup();
+          if (m.bringToFront) m.bringToFront();
         }
       }, 1900);
     }, 400);
@@ -268,7 +284,7 @@ function renderBottomLocationCards(locations) {
           Rain ${Number(l.rainfall_24h).toFixed(1)}mm · Soil ${Number(l.soil_moisture).toFixed(1)}% · Slope ${l.slope}°
         </div>
         <button class="btn btn-outline btn-sm btn-block" style="margin-top:12px;" 
-                onclick="map.flyTo([${l.latitude}, ${l.longitude}], 10, { duration: 1.2 })">
+                onclick="map.flyTo([${l.latitude}, ${l.longitude}], 10.5, { duration: 1.2 })">
           View on map
         </button>
       </div>
@@ -282,7 +298,7 @@ function renderSearchChips(locations) {
   if (!chipsEl) return;
 
   chipsEl.innerHTML = locations.slice(0, 10).map(l =>
-    `<span class="chip" onclick="map.flyTo([${l.latitude}, ${l.longitude}], 10, { duration: 1.2 });" style="cursor:pointer;">
+    `<span class="chip" onclick="map.flyTo([${l.latitude}, ${l.longitude}], 10.5, { duration: 1.2 });" style="cursor:pointer;">
       <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${l.color}; margin-right:4px;"></span>
       ${l.name}
     </span>`
@@ -365,6 +381,6 @@ bindLayerToggle('lyr-reports', layerGroups.reports);
 bindLayerToggle('lyr-roads', layerGroups.roads);
 bindLayerToggle('lyr-emergency', layerGroups.emergency);
 
-// Initial Execution & 45s Polling
+// Initial execution & 45s Polling
 loadLiveDistrictMarkers();
 setInterval(loadLiveDistrictMarkers, 45000);
