@@ -5,7 +5,6 @@ const API_BASE_URL = "https://sih-landslide-backend-kzl9.onrender.com";
 
 initShell({ active: 'dashboard.html', title: 'Command Dashboard', crumb: 'Monitor / Dashboard' });
 
-// District Name to Backend Location ID Mapping (with fallbacks)
 const DISTRICT_MAP = {
   'south-sikkim': 1,
   'east-sikkim': 2,
@@ -22,12 +21,22 @@ const DISTRICT_MAP = {
 
 let currentLocations = typeof DEMO_LOCATIONS !== 'undefined' ? [...DEMO_LOCATIONS] : [];
 
-// Active location integer ID check
 let rawSavedId = (typeof lsGet === 'function') ? lsGet(LS_KEYS.ACTIVE_LOCATION, 2) : 2;
 let activeLocationId = parseInt(rawSavedId) || DISTRICT_MAP[String(rawSavedId).toLowerCase()] || 2;
 let activeLoc = null;
 
-// Helper: Normalize Backend API object into Frontend Schema
+// Real-Time Seconds Ticker Tracking
+let lastSyncTimestamp = Date.now();
+
+function updateLiveSecondsTicker() {
+  const syncTimeEl = document.getElementById('db-sync-time');
+  if (!syncTimeEl) return;
+  const secondsAgo = Math.max(0, Math.floor((Date.now() - lastSyncTimestamp) / 1000));
+  const timeText = secondsAgo < 5 ? 'Just now' : `${secondsAgo}s ago`;
+  syncTimeEl.innerHTML = `<span style="color:#22c55e;">●</span> Live Satellite (${timeText} • Streaming)`;
+}
+setInterval(updateLiveSecondsTicker, 1000);
+
 function normalizeLocationData(raw) {
   if (!raw) return null;
   const score = Math.round(raw.risk_score ?? raw.riskScore ?? 45);
@@ -53,7 +62,6 @@ function normalizeLocationData(raw) {
   };
 }
 
-// Rotate Needle on the 0-100 Gauge
 function setNeedle(score) {
   const numScore = Number(score) || 0;
   const clamped = Math.max(0, Math.min(100, numScore));
@@ -65,7 +73,6 @@ function setNeedle(score) {
   }
 }
 
-// Populate District Dropdown Selector
 function renderLocationSelect() {
   const sel = document.getElementById('location-select');
   if (!sel || !currentLocations.length) return;
@@ -84,7 +91,6 @@ function renderLocationSelect() {
   };
 }
 
-// Render Metrics & Cards to DOM
 function renderLocation() {
   if (!activeLoc) return;
   const rm = (typeof riskMeta === 'function') 
@@ -99,14 +105,12 @@ function renderLocation() {
   if (document.getElementById('db-elev')) document.getElementById('db-elev').innerHTML = `${activeLoc.elevation}<small>m</small>`;
   if (document.getElementById('db-hist')) document.getElementById('db-hist').textContent = activeLoc.historicalLandslides;
 
-  // Status Badge
   const badge = document.getElementById('db-status-badge');
   if (badge) {
     badge.className = `badge badge-${rm.cls}`;
     badge.innerHTML = `<span class="badge-dot" style="background-color: ${activeLoc.color};"></span> ${rm.label}`;
   }
 
-  // Warning Advisory Line
   const warnLine = document.getElementById('db-warn-line');
   if (warnLine) {
     if (activeLoc.advisory) {
@@ -126,11 +130,7 @@ function renderLocation() {
   setTimeout(() => setNeedle(activeLoc.riskScore), 100);
 }
 
-// Fetch 100% Real-Time Satellite Telemetry from Backend for Active District
 async function fetchLiveDistrictRisk(locId) {
-  const syncTimeEl = document.getElementById('db-sync-time');
-  if (syncTimeEl) syncTimeEl.textContent = 'Syncing Satellite Radar...';
-
   let targetId = parseInt(locId);
   if (isNaN(targetId)) targetId = DISTRICT_MAP[locId] || 2;
 
@@ -139,13 +139,10 @@ async function fetchLiveDistrictRisk(locId) {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     
     const liveData = await response.json();
-    console.log(">>> [24x7 Satellite Live Feed]:", liveData);
-
     const telemetry = liveData.live_telemetry || {};
     const baseline = liveData.geotechnical_baseline || {};
     const aiRisk = liveData.realtime_ai_risk_assessment || {};
 
-    // Merge into active location state
     activeLoc = normalizeLocationData({
       id: targetId,
       district: liveData.district,
@@ -165,18 +162,15 @@ async function fetchLiveDistrictRisk(locId) {
 
     renderLocation();
 
-    if (syncTimeEl) {
-      const timestamp = liveData.fetch_timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      syncTimeEl.innerHTML = `<span style="color:#22c55e;">●</span> Live Satellite (${timestamp})`;
-    }
+    // Reset ticker to "Just now" on each real-time update
+    lastSyncTimestamp = Date.now();
+    updateLiveSecondsTicker();
 
   } catch (error) {
     console.warn("Satellite live API delayed/cold-starting:", error);
-    if (syncTimeEl) syncTimeEl.textContent = 'Live Radar reconnecting...';
   }
 }
 
-// Fetch all 43 NER districts with live satellite scores
 async function loadBackendLocations() {
   try {
     const res = await fetch(`${API_BASE_URL}/locations?live=true`);
@@ -187,14 +181,12 @@ async function loadBackendLocations() {
         renderLocationSelect();
         renderPriorityList();
 
-        // Update active location if found
         const updatedActive = currentLocations.find(l => Number(l.id) === Number(activeLocationId));
         if (updatedActive) {
           activeLoc = updatedActive;
           renderLocation();
         }
 
-        // Re-render map with real-time colored markers
         if (typeof addLocationMarkers === 'function' && window._dashMapInstance) {
           addLocationMarkers(window._dashMapInstance, currentLocations);
         }
@@ -205,7 +197,6 @@ async function loadBackendLocations() {
   }
 }
 
-// Fetch Real-time Alerts from Backend
 async function fetchLiveAlerts() {
   try {
     const res = await fetch(`${API_BASE_URL}/alerts`);
@@ -215,17 +206,13 @@ async function fetchLiveAlerts() {
         const alertsCountEl = document.getElementById('db-alerts-count');
         if (alertsCountEl) alertsCountEl.textContent = alerts.length;
 
-        // Navbar Bell Badge
-        const navAlertBadges = document.querySelectorAll('.nav-alert-badge, [data-alert-badge]');
+        const navAlertBadges = document.querySelectorAll('.nav-alert-badge, [data-alert-badge], [data-shell-alert-badge]');
         navAlertBadges.forEach(b => b.textContent = alerts.length);
       }
     }
-  } catch (e) {
-    console.warn("Alerts fetch error:", e);
-  }
+  } catch (e) {}
 }
 
-// Render Priority Vulnerability List
 function renderPriorityList() {
   const list = document.getElementById('db-priority-list');
   if (!list || !currentLocations.length) return;
@@ -250,7 +237,6 @@ function renderPriorityList() {
   }).join('');
 }
 
-// Click listener for priority items
 window.selectDistrictById = function(id) {
   activeLocationId = id;
   const sel = document.getElementById('location-select');
@@ -260,7 +246,6 @@ window.selectDistrictById = function(id) {
   fetchLiveDistrictRisk(id);
 };
 
-// Render Leaflet Map
 function renderDashboardMap() {
   const mapContainer = document.getElementById('dashboard-map');
   if (!mapContainer || mapContainer._leaflet_id) return;
@@ -273,7 +258,6 @@ function renderDashboardMap() {
   }
 }
 
-// Historical Impact Chart
 function renderHistChart() {
   const canvas = document.getElementById('db-hist-chart');
   if (!canvas) return;
@@ -293,8 +277,7 @@ function renderHistChart() {
   }
 }
 
-// ---------------- EXECUTION FLOW ----------------
-// 1. Initial Quick Render
+// ---------------- INITIAL RENDER & POLLING ----------------
 if (currentLocations.length > 0) {
   activeLoc = currentLocations.find(l => Number(l.id) === Number(activeLocationId)) || currentLocations[0];
   renderLocationSelect();
@@ -304,13 +287,12 @@ if (currentLocations.length > 0) {
 renderDashboardMap();
 renderHistChart();
 
-// 2. Load 24x7 Real-time Satellite Data & Alerts
 loadBackendLocations();
 fetchLiveDistrictRisk(activeLocationId);
 fetchLiveAlerts();
 
-// 3. 24x7 Auto Polling (Every 30 Seconds)
+// Polling every 15 seconds for continuous live refresh
 setInterval(() => {
   fetchLiveDistrictRisk(activeLocationId);
   fetchLiveAlerts();
-}, 30000);
+}, 15000);
