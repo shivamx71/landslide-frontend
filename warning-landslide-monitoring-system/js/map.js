@@ -1,8 +1,10 @@
 /* =========================================================
-   map.js — Risk Map page: OGC GeoJSON, Choropleth & Satellite Layer
+   map.js — Risk Map: OGC GeoJSON, Live SQLite Pins & Navigation
    ========================================================= */
 
 initShell({ active: 'risk-map.html', title: 'Risk Map', crumb: 'Monitor / Risk Map' });
+
+const API_BASE = typeof BACKEND_URL !== 'undefined' ? BACKEND_URL : "https://sih-landslide-backend-kzl9.onrender.com";
 
 const map = baseMap('gis-map', [25.8, 92.2], 6);
 
@@ -10,16 +12,15 @@ const layerGroups = {
   riskzones: L.layerGroup().addTo(map),
   locations: L.layerGroup().addTo(map),
   historical: L.layerGroup(),
-  reports: L.layerGroup(),
+  reports: L.layerGroup().addTo(map),
   roads: L.layerGroup(),
   emergency: L.layerGroup()
 };
 
-// ---------------- 1. GIS CHOROPLETH BOUNDARIES FROM FASTAPI ----------------
+// ---------------- 1. GIS CHOROPLETH BOUNDARIES FROM FASTAPI (/geojson) ----------------
 async function loadGeoJsonBoundaries() {
   try {
-    const endpoint = typeof BACKEND_URL !== 'undefined' ? `${BACKEND_URL}/geojson` : 'http://127.0.0.1:8000/geojson';
-    const res = await fetch(endpoint);
+    const res = await fetch(`${API_BASE}/geojson`);
     if (!res.ok) throw new Error("GeoJSON API offline");
     const geoData = await res.json();
 
@@ -69,7 +70,7 @@ async function loadGeoJsonBoundaries() {
             <div class="prow"><span>Hazard Tier</span><b style="color:${p.riskLevel==='critical'?'#FF5252':'#FF9A3D'};">${rLvl}</b></div>
             <div class="prow"><span>Risk Score</span><b>${rScore} / 100</b></div>
             <div class="prow"><span>GIS Standard</span><b>OGC / WGS 84</b></div>
-            <div style="margin-top:8px;font-size:11px;color:var(--text-faint);">Source: Survey of India / ISRO NRSC Atlas 2023</div>
+            <div style="margin-top:8px;font-size:11px;color:var(--text-faint);">Source: Survey of India / ISRO NRSC Atlas</div>
           </div>
         `);
       }
@@ -78,7 +79,7 @@ async function loadGeoJsonBoundaries() {
     geoLayer.addTo(layerGroups.riskzones);
     console.log(">>> [GIS] North-East Choropleth Boundary Polygons rendered from FastAPI!");
   } catch (err) {
-    console.warn(">>> [GIS] Fallback: Using default marker view:", err);
+    console.warn(">>> [GIS] Boundary fallback mode:", err);
   }
 }
 loadGeoJsonBoundaries();
@@ -132,9 +133,9 @@ setTimeout(() => {
   }
 }, 300);
 
-// ---------------- 3. CORE MARKERS & INCIDENTS ----------------
+// ---------------- 3. CORE MARKERS & DISTRICT PINS ----------------
 DEMO_LOCATIONS.forEach(loc => {
-  const hex = RISK_HEX[loc.riskLevel];
+  const hex = RISK_HEX[loc.riskLevel] || '#F0C93D';
   if (loc.riskLevel === 'critical' || loc.riskLevel === 'high'){
     L.circle([loc.lat, loc.lng], {
       radius: loc.riskLevel === 'critical' ? 26000 : 18000,
@@ -160,20 +161,10 @@ HISTORICAL_LANDSLIDES.forEach((h, i) => {
     .addTo(layerGroups.historical);
 });
 
-// Field reports (LocalStorage + Live SQLite Backend sync)
+// Field reports (Sync with Live SQLite DB: GET /reports)
 async function renderAllFieldReports() {
-  // LocalStorage reports
-  lsGet(LS_KEYS.REPORTS, []).forEach(r => {
-    if (!r.lat || !r.lng) return;
-    L.marker([r.lat, r.lng], { icon: reportIcon() })
-      .bindPopup(`<div class="map-popup"><h4>${r.type}</h4><div class="prow"><span>Location</span><b>${r.location}</b></div><div class="prow"><span>Submitted</span><b>${fmtDate(r.submittedAt)}</b></div><p style="margin-top:8px;font-size:12.5px;color:var(--text-dim);">${r.description}</p></div>`)
-      .addTo(layerGroups.reports);
-  });
-
-  // Live Database Reports
   try {
-    const endpoint = typeof BACKEND_URL !== 'undefined' ? `${BACKEND_URL}/reports` : 'http://127.0.0.1:8000/reports';
-    const res = await fetch(endpoint);
+    const res = await fetch(`${API_BASE}/reports`);
     if (res.ok) {
       const liveData = await res.json();
       liveData.forEach(r => {
@@ -182,8 +173,17 @@ async function renderAllFieldReports() {
           .bindPopup(`<div class="map-popup"><h4>${r.report_type}</h4><div class="prow"><span>Source</span><b>Live SQLite DB</b></div><div class="prow"><span>Logged</span><b>${fmtDate(r.created_at)}</b></div><p style="margin-top:8px;font-size:12.5px;color:var(--text-dim);">${r.description}</p></div>`)
           .addTo(layerGroups.reports);
       });
+      console.log(">>> [GIS MAP] Live SQLite Incident markers added to map:", liveData.length);
     }
-  } catch(e){}
+  } catch(e){
+    console.warn("Using local report pins fallback:", e);
+    lsGet(LS_KEYS.REPORTS, []).forEach(r => {
+      if (!r.lat || !r.lng) return;
+      L.marker([r.lat, r.lng], { icon: reportIcon() })
+        .bindPopup(`<div class="map-popup"><h4>${r.type}</h4><div class="prow"><span>Location</span><b>${r.location}</b></div><div class="prow"><span>Submitted</span><b>${fmtDate(r.submittedAt)}</b></div><p style="margin-top:8px;font-size:12.5px;color:var(--text-dim);">${r.description}</p></div>`)
+        .addTo(layerGroups.reports);
+    });
+  }
 }
 renderAllFieldReports();
 
@@ -221,6 +221,20 @@ bindLayerToggle('lyr-historical', layerGroups.historical);
 bindLayerToggle('lyr-reports', layerGroups.reports);
 bindLayerToggle('lyr-roads', layerGroups.roads);
 bindLayerToggle('lyr-emergency', layerGroups.emergency);
+
+// URL Navigation Handler (Alerts ya Priority page se aane par seedha us location par fly kare)
+(function handleQueryNavigation(){
+  const params = new URLSearchParams(window.location.search);
+  const locId = params.get('loc');
+  if (locId) {
+    const target = DEMO_LOCATIONS.find(l => String(l.id) === String(locId));
+    if (target) {
+      setTimeout(() => {
+        map.flyTo([target.lat, target.lng], 10, { duration: 1.5 });
+      }, 500);
+    }
+  }
+})();
 
 // quick-jump chips
 const chipsEl = document.getElementById('map-search-chips');

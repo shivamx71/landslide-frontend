@@ -1,8 +1,10 @@
 /* =========================================================
-   risk-analysis.js — Integrated with FastAPI Backend Engine
+   risk-analysis.js — Realtime AI Landslide Prediction Engine
    ========================================================= */
 
 initShell({ active: 'risk-analysis.html', title: 'Risk Analysis', crumb: 'Monitor / Risk Analysis' });
+
+const API_BASE = typeof BACKEND_URL !== 'undefined' ? BACKEND_URL : "https://sih-landslide-backend-kzl9.onrender.com";
 
 // Prefill from query param location, if present
 (function prefillFromQuery(){
@@ -10,23 +12,26 @@ initShell({ active: 'risk-analysis.html', title: 'Risk Analysis', crumb: 'Monito
   const locId = params.get('loc');
   if (locId){
     const loc = getLocationById(locId);
-    document.getElementById('in-location').value = loc.name;
-    document.getElementById('in-rainfall').value = loc.rainfall;
-    document.getElementById('in-soil').value = loc.soilMoisture;
-    document.getElementById('in-slope').value = loc.slope;
-    document.getElementById('in-elevation').value = loc.elevation;
-    document.getElementById('in-history').value = loc.historicalLandslides;
+    if (loc) {
+      document.getElementById('in-location').value = loc.name;
+      document.getElementById('in-rainfall').value = loc.rainfall;
+      document.getElementById('in-soil').value = loc.soilMoisture;
+      document.getElementById('in-slope').value = loc.slope;
+      document.getElementById('in-elevation').value = loc.elevation;
+      document.getElementById('in-history').value = loc.historicalLandslides;
+    }
   }
 })();
 
 function setRAneedle(score){
   const angle = -90 + (score/100)*180;
-  document.getElementById('ra-needle').style.transform = `rotate(${angle}deg)`;
+  const needle = document.getElementById('ra-needle');
+  if (needle) needle.style.transform = `rotate(${angle}deg)`;
 }
 
 document.getElementById('risk-form').addEventListener('submit', async function(e){
   e.preventDefault();
-  const locationName = document.getElementById('in-location').value.trim() || 'Unnamed location';
+  const locationName = document.getElementById('in-location').value.trim() || 'Custom Sector';
   const inputs = {
     rainfall: Number(document.getElementById('in-rainfall').value),
     soilMoisture: Number(document.getElementById('in-soil').value),
@@ -36,16 +41,16 @@ document.getElementById('risk-form').addEventListener('submit', async function(e
   };
 
   let result;
-  let dataSource = "FastAPI AI Engine";
+  let dataSource = "SIH FastAPI AI Engine";
 
-  // ---------------- FASTAPI ML MODEL INTEGRATION ----------------
+  // ---------------- FASTAPI ML MODEL INTEGRATION (POST /predict) ----------------
   try {
     const histMap = { 'Low': 2, 'Moderate': 6, 'High': 12 };
     const histVal = typeof inputs.historicalLandslides === 'number'
       ? inputs.historicalLandslides
       : (histMap[inputs.historicalLandslides] || 6);
 
-    const response = await fetch(`${BACKEND_URL}/predict`, {
+    const response = await fetch(`${API_BASE}/predict`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -61,20 +66,19 @@ document.getElementById('risk-form').addEventListener('submit', async function(e
     if (response.ok) {
       const data = await response.json();
       result = {
-        score: data.risk_score,
-        level: data.risk_level.toLowerCase(),
+        score: Math.round(data.risk_score),
+        level: (data.risk_level || 'moderate').toLowerCase(),
         confidence: Math.round(75 + (data.risk_score / 100) * 20)
       };
-      console.log(">>> [FASTAPI] AI Risk Prediction received from Backend:", result);
+      console.log(">>> [FASTAPI] AI Prediction Model Result:", result);
     } else {
-      throw new Error("Backend response not OK");
+      throw new Error("Backend response error");
     }
   } catch (err) {
-    console.warn(">>> [FALLBACK] Backend unreachable, using local heuristic model:", err);
+    console.warn(">>> [FALLBACK] Backend unreachable, using heuristic engine:", err);
     result = computeRiskScore(inputs);
-    dataSource = "Local Fallback Engine";
+    dataSource = "Local Engine";
   }
-  // ---------------------------------------------------------------
 
   const rm = riskMeta(result.level);
 
@@ -112,8 +116,8 @@ document.getElementById('risk-form').addEventListener('submit', async function(e
     });
     lsSet(LS_KEYS.ALERTS, alerts);
     alertNote.style.display = 'block';
-    alertNote.innerHTML = `⚠️ <b>Alert automatically generated</b> — a ${result.level.toUpperCase()} severity alert for ${locationName} has been logged to the system.`;
-    toast('New ' + result.level.toUpperCase() + ' alert generated for ' + locationName, 'warn');
+    alertNote.innerHTML = `⚠️ <b>Alert automatically generated</b> — a ${result.level.toUpperCase()} severity alert for ${locationName} has been logged.`;
+    if (typeof toast === 'function') toast('New ' + result.level.toUpperCase() + ' alert generated for ' + locationName, 'warn');
   } else {
     alertNote.style.display = 'none';
   }
