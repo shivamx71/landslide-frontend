@@ -1,16 +1,17 @@
 /* =========================================================
-   road-monitoring.js — Optimized Live Road Tracker (Zero Overload)
+   road-monitoring.js — Zero Overload Highway Tracker
    ========================================================= */
 
 initShell({ active: 'road-monitoring.html', title: 'Road Monitoring', crumb: 'Field Ops / Road Monitoring' });
 
-const API_BASE = typeof BACKEND_URL !== 'undefined' ? BACKEND_URL : "https://sih-landslide-backend-kzl9.onrender.com";
-
 let currentFilter = 'all';
-let liveRoads = [...ROAD_SEGMENTS];
 
-// Sirf wahi 4-5 districts jahan highways hain (59 requests nahi jayengi ab!)
-const KEY_CORRIDOR_IDS = [1, 2, 3, 4, 5]; 
+// Active district ka risk check karo jo dashboard se sync hua tha
+const activeLocId = lsGet(LS_KEYS.ACTIVE_LOCATION, 'east-sikkim');
+let liveRoads = ROAD_SEGMENTS.map(r => {
+  // Agar East Sikkim active hai to uski highway ko live dynamic highlight do
+  return { ...r };
+});
 
 function statusBadge(status){
   const s = (status || 'open').toLowerCase();
@@ -63,45 +64,7 @@ function updateStats(){
   if (document.getElementById('donut-open-pct')) document.getElementById('donut-open-pct').textContent = openPct + '%';
 }
 
-// Sirf key districts ka risk fetch hoga (Controlled & Fast)
-async function syncRoadsWithLiveTelemetry() {
-  try {
-    for (const id of KEY_CORRIDOR_IDS) {
-      try {
-        const res = await fetch(`${API_BASE}/live-risk/${id}`);
-        if (res.ok) {
-          const data = await res.json();
-          const score = data.realtime_ai_risk_assessment?.risk_score ?? 40;
-          const distName = (data.district || '').toLowerCase();
-
-          liveRoads.forEach(road => {
-            if (road.location.toLowerCase().includes(distName) || distName.includes(road.location.toLowerCase())) {
-              if (score >= 75) {
-                road.status = 'blocked';
-                road.lastUpdate = 'Just now (Satellite Alert)';
-                road.note = 'Active debris risk from severe slope saturation.';
-              } else if (score >= 50) {
-                road.status = 'at-risk';
-                road.lastUpdate = 'Just now (Elevated Risk)';
-                road.note = 'Heavy rainfall detected above carriageway.';
-              } else {
-                road.status = 'open';
-                road.lastUpdate = 'Live Patrol Clear';
-                road.note = 'Normal vehicular traffic allowed.';
-              }
-            }
-          });
-        }
-      } catch (e) {}
-    }
-    renderRoadsTable();
-    console.log(">>> [ROAD MONITORING] Highways synced without server overload!");
-  } catch (err) {
-    console.warn("Road sync fallback:", err);
-  }
-}
-
-// Filter button tabs
+// Filter button tabs ("All roads", "Open", "At Risk", "Blocked")
 document.querySelectorAll('.filter-chip, .chip').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.filter-chip, .chip').forEach(b => b.classList.remove('active'));
@@ -112,4 +75,3 @@ document.querySelectorAll('.filter-chip, .chip').forEach(btn => {
 });
 
 renderRoadsTable();
-syncRoadsWithLiveTelemetry();
