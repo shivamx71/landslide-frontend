@@ -132,6 +132,13 @@ function renderLocation() {
   if (histTitle) histTitle.textContent = activeLoc.name;
   renderHistChart(activeLoc);
 
+  // --- YEH HAI WO MAGIC LINE JO DASHBOARD KE BUTTON KO LOCATION KE SAATH JODTI HAI ---
+  sessionStorage.setItem('wlms_focus_loc', String(activeLocationId));
+  const analysisBtn = document.querySelector('a[href*="risk-analysis.html"]');
+  if (analysisBtn) {
+    analysisBtn.href = `risk-analysis.html?loc=${activeLocationId}`;
+  }
+
   setTimeout(() => setNeedle(activeLoc.riskScore), 100);
 }
 

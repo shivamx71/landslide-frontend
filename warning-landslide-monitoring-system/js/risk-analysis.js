@@ -364,11 +364,15 @@ function bindActionButtons() {
 upgradeToCitizenSelector();
 bindActionButtons();
 
-// Check URL query param e.g. ?loc=2
+// YEH NAYA WALA PASTE KARO:
 (function init() {
   const params = new URLSearchParams(window.location.search);
-  const locParam = params.get('loc') || sessionStorage.getItem('wlms_focus_loc') || '2';
+  const locParam = params.get('loc') || params.get('id') || sessionStorage.getItem('wlms_focus_loc') || '2';
   const sel = document.getElementById('in-location');
-  if (sel) sel.value = String(locParam);
-  loadLiveTelemetryIntoForm(locParam, false);
+  if (sel) {
+    sel.value = String(locParam);
+    // Agar kisi karan se id match na ho toh pehla option select rahega bina crash huye
+    if (!sel.value) sel.selectedIndex = 0;
+  }
+  loadLiveTelemetryIntoForm(sel ? sel.value : locParam, false);
 })();
