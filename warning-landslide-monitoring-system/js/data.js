@@ -3,8 +3,8 @@
    Warning and Landslide Monitoring System (Full-Stack Mode)
    ========================================================= */
 
-// Global Backend URL
-const BACKEND_URL = 'http://127.0.0.1:8000https://sih-landslide-backend-kzl9.onrender.com';
+// Global Backend URL (Clean Render URL)
+const BACKEND_URL = 'https://sih-landslide-backend-kzl9.onrender.com';
 
 const LS_KEYS = {
   USERS: 'wlms_users',
@@ -20,35 +20,35 @@ const LS_KEYS = {
 /* ---- Demo monitoring locations (seed / cached API data) ---- */
 let DEMO_LOCATIONS = [
   {
-    id: 'east-sikkim', name: 'East Sikkim', state: 'Sikkim', region: 'Eastern Himalaya',
+    id: 1, name: 'East Sikkim', state: 'Sikkim', region: 'Eastern Himalaya',
     lat: 27.3389, lng: 88.6065,
     riskScore: 87, riskLevel: 'critical',
     rainfall: 182, soilMoisture: 78, slope: 36, elevation: 1850, historicalLandslides: 'High',
     roadStatus: 'blocked', activeAlerts: 2, confidence: 92
   },
   {
-    id: 'gangtok', name: 'Gangtok', state: 'Sikkim', region: 'Eastern Himalaya',
+    id: 2, name: 'Gangtok', state: 'Sikkim', region: 'Eastern Himalaya',
     lat: 27.3314, lng: 88.6138,
     riskScore: 58, riskLevel: 'high',
     rainfall: 121, soilMoisture: 61, slope: 27, elevation: 1650, historicalLandslides: 'Moderate',
     roadStatus: 'at-risk', activeAlerts: 1, confidence: 84
   },
   {
-    id: 'aizawl', name: 'Aizawl', state: 'Mizoram', region: 'North-East Hills',
+    id: 3, name: 'Aizawl', state: 'Mizoram', region: 'North-East Hills',
     lat: 23.7271, lng: 92.7176,
     riskScore: 64, riskLevel: 'high',
     rainfall: 143, soilMoisture: 69, slope: 31, elevation: 1132, historicalLandslides: 'High',
     roadStatus: 'at-risk', activeAlerts: 1, confidence: 88
   },
   {
-    id: 'kohima', name: 'Kohima', state: 'Nagaland', region: 'North-East Hills',
+    id: 4, name: 'Kohima', state: 'Nagaland', region: 'North-East Hills',
     lat: 25.6751, lng: 94.1086,
     riskScore: 61, riskLevel: 'high',
     rainfall: 132, soilMoisture: 66, slope: 29, elevation: 1444, historicalLandslides: 'Moderate',
     roadStatus: 'open', activeAlerts: 1, confidence: 81
   },
   {
-    id: 'shillong', name: 'Shillong', state: 'Meghalaya', region: 'North-East Hills',
+    id: 5, name: 'Shillong', state: 'Meghalaya', region: 'North-East Hills',
     lat: 25.5788, lng: 91.8933,
     riskScore: 42, riskLevel: 'moderate',
     rainfall: 96, soilMoisture: 52, slope: 22, elevation: 1496, historicalLandslides: 'Moderate',
@@ -144,7 +144,7 @@ function seedIfEmpty(){
   }
   if (!localStorage.getItem(LS_KEYS.THEME)) lsSet(LS_KEYS.THEME, 'dark');
   if (!localStorage.getItem(LS_KEYS.LANG)) lsSet(LS_KEYS.LANG, 'en');
-  if (!localStorage.getItem(LS_KEYS.ACTIVE_LOCATION)) lsSet(LS_KEYS.ACTIVE_LOCATION, 'east-sikkim');
+  if (!localStorage.getItem(LS_KEYS.ACTIVE_LOCATION)) lsSet(LS_KEYS.ACTIVE_LOCATION, 1);
 }
 seedIfEmpty();
 
@@ -154,14 +154,14 @@ async function syncWithFastAPIBackend() {
     const alertsRes = await fetch(`${BACKEND_URL}/alerts`);
     if (alertsRes.ok) {
       const liveAlerts = await alertsRes.json();
-      if (liveAlerts && liveAlerts.length > 0) {
+      if (liveAlerts && Array.isArray(liveAlerts) && liveAlerts.length > 0) {
         const mappedAlerts = liveAlerts.map((a, i) => ({
           id: `AL-LIVE-${i + 1}`,
-          location: a.location,
-          title: a.severity === 'CRITICAL' ? 'LANDSLIDE WARNING' : 'ELEVATED RISK ADVISORY',
-          message: a.message,
-          riskScore: a.risk_score,
-          severity: a.severity.toLowerCase(),
+          location: a.location || 'NER Zone',
+          title: (a.severity || '').toUpperCase() === 'CRITICAL' ? 'LANDSLIDE WARNING' : 'ELEVATED RISK ADVISORY',
+          message: a.message || 'Risk conditions updated.',
+          riskScore: a.risk_score || 70,
+          severity: (a.severity || 'high').toLowerCase(),
           createdAt: new Date().toISOString(),
           status: 'active'
         }));
@@ -230,4 +230,6 @@ function timeAgo(iso){
 }
 function uid(prefix){ return prefix + '-' + Math.random().toString(36).slice(2,7).toUpperCase(); }
 
-function getLocationById(id){ return DEMO_LOCATIONS.find(l => l.id === id) || DEMO_LOCATIONS[0]; }
+function getLocationById(id){ 
+  return DEMO_LOCATIONS.find(l => String(l.id) === String(id)) || DEMO_LOCATIONS[0]; 
+}
