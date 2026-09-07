@@ -1,5 +1,5 @@
 /* =========================================================
-   road-monitoring.js — Live Satellite & Geotechnical Road Tracker
+   road-monitoring.js — Optimized Live Road Tracker (Zero Overload)
    ========================================================= */
 
 initShell({ active: 'road-monitoring.html', title: 'Road Monitoring', crumb: 'Field Ops / Road Monitoring' });
@@ -8,6 +8,9 @@ const API_BASE = typeof BACKEND_URL !== 'undefined' ? BACKEND_URL : "https://sih
 
 let currentFilter = 'all';
 let liveRoads = [...ROAD_SEGMENTS];
+
+// Sirf wahi 4-5 districts jahan highways hain (59 requests nahi jayengi ab!)
+const KEY_CORRIDOR_IDS = [1, 2, 3, 4, 5]; 
 
 function statusBadge(status){
   const s = (status || 'open').toLowerCase();
@@ -60,49 +63,39 @@ function updateStats(){
   if (document.getElementById('donut-open-pct')) document.getElementById('donut-open-pct').textContent = openPct + '%';
 }
 
-// ---------------- LIVE SATELLITE ROAD DISRUPTION SYNC ----------------
+// Sirf key districts ka risk fetch hoga (Controlled & Fast)
 async function syncRoadsWithLiveTelemetry() {
   try {
-    // 1. Backend se saare districts ka live satellite risk uthao
-    const res = await fetch(`${API_BASE}/locations`);
-    if (!res.ok) return;
-    const locations = await res.json();
+    for (const id of KEY_CORRIDOR_IDS) {
+      try {
+        const res = await fetch(`${API_BASE}/live-risk/${id}`);
+        if (res.ok) {
+          const data = await res.json();
+          const score = data.realtime_ai_risk_assessment?.risk_score ?? 40;
+          const distName = (data.district || '').toLowerCase();
 
-    // 2. Har location ke risk score ke mutabik Highway status dynamically badlo
-    await Promise.all(
-      locations.map(async (loc) => {
-        try {
-          const rRes = await fetch(`${API_BASE}/live-risk/${loc.id}`);
-          if (rRes.ok) {
-            const rData = await rRes.json();
-            const score = rData.realtime_ai_risk_assessment?.risk_score ?? 40;
-            
-            // Is district ki roads dhundo aur live status assign karo
-            liveRoads.forEach(road => {
-              if (road.location.toLowerCase().includes(loc.name.toLowerCase()) || loc.name.toLowerCase().includes(road.location.toLowerCase())) {
-                if (score >= 75) {
-                  road.status = 'blocked';
-                  road.lastUpdate = 'Just now (Satellite Triggered)';
-                  road.note = 'Active debris risk from severe saturation.';
-                } else if (score >= 50) {
-                  road.status = 'at-risk';
-                  road.lastUpdate = 'Just now (Live Alert)';
-                  road.note = 'Heavy rainfall detected above carriageway.';
-                } else {
-                  road.status = 'open';
-                  road.lastUpdate = 'Live Patrol Clear';
-                  road.note = 'Normal vehicular traffic allowed.';
-                }
+          liveRoads.forEach(road => {
+            if (road.location.toLowerCase().includes(distName) || distName.includes(road.location.toLowerCase())) {
+              if (score >= 75) {
+                road.status = 'blocked';
+                road.lastUpdate = 'Just now (Satellite Alert)';
+                road.note = 'Active debris risk from severe slope saturation.';
+              } else if (score >= 50) {
+                road.status = 'at-risk';
+                road.lastUpdate = 'Just now (Elevated Risk)';
+                road.note = 'Heavy rainfall detected above carriageway.';
+              } else {
+                road.status = 'open';
+                road.lastUpdate = 'Live Patrol Clear';
+                road.note = 'Normal vehicular traffic allowed.';
               }
-            });
-          }
-        } catch(e){}
-      })
-    );
-
-    console.log(">>> [ROAD MONITORING] Highways updated with Live Satellite Risks!");
+            }
+          });
+        }
+      } catch (e) {}
+    }
     renderRoadsTable();
-
+    console.log(">>> [ROAD MONITORING] Highways synced without server overload!");
   } catch (err) {
     console.warn("Road sync fallback:", err);
   }
@@ -120,4 +113,3 @@ document.querySelectorAll('.filter-chip, .chip').forEach(btn => {
 
 renderRoadsTable();
 syncRoadsWithLiveTelemetry();
-setInterval(syncRoadsWithLiveTelemetry, 45000);
