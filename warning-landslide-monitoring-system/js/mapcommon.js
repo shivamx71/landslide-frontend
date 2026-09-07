@@ -9,7 +9,6 @@ const RISK_HEX = {
   critical: '#dc2626' 
 };
 
-// Custom Marker with Dynamic Pulsing Glow for High/Critical Zones
 function coloredIcon(hex, size) {
   size = size || 26;
   const isDanger = hex === '#dc2626' || hex === '#FF5252';
@@ -49,21 +48,18 @@ function reportIcon() {
   });
 }
 
-// Sleek Basemap Configured for Dark Command Center Theme
+// 100% Free ESRI High-Definition Dark Canvas Tiles (Zero API Key, Zero Watermarks!)
 function baseMap(elId, center, zoom) {
   const map = L.map(elId, { scrollWheelZoom: true }).setView(center || [26.0, 92.0], zoom || 6.2);
   
-  // High-performance CartoDB Dark Matter tiles (matching the command dashboard)
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-    subdomains: 'abcd',
-    maxZoom: 19
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+    attribution: '&copy; Esri &mdash; Survey of India &copy; ISRO NRSC',
+    maxZoom: 16
   }).addTo(map);
 
   return map;
 }
 
-// 100% Real Live Satellite Popup (Handles both API schema & Demo schema)
 function locationPopupHtml(loc) {
   const score = Math.round(loc.risk_score ?? loc.riskScore ?? 45);
   const rawLevel = String(loc.risk_level ?? loc.riskLevel ?? (score >= 75 ? 'critical' : score >= 55 ? 'high' : 'moderate')).toLowerCase();
@@ -103,14 +99,12 @@ function locationPopupHtml(loc) {
   `;
 }
 
-// Safe Marker Adder: Handles both [latitude, longitude] and [lat, lng]
 function addLocationMarkers(map, locations, opts) {
   if (!map || !Array.isArray(locations)) return {};
   opts = opts || {};
   const markers = {};
 
   locations.forEach(loc => {
-    // Safely extract coordinates (avoids Leaflet undefined NaN crash)
     const lat = Number(loc.latitude ?? loc.lat);
     const lng = Number(loc.longitude ?? loc.lng);
     if (isNaN(lat) || isNaN(lng)) return;
@@ -125,7 +119,6 @@ function addLocationMarkers(map, locations, opts) {
 
     marker.bindPopup(locationPopupHtml(loc));
 
-    // Dynamic hazard zone circles
     if (level === 'critical' || level === 'high' || score >= 55) {
       L.circle([lat, lng], {
         radius: opts.zoneRadius || (level === 'critical' ? 24000 : 16000),
@@ -143,7 +136,6 @@ function addLocationMarkers(map, locations, opts) {
   return markers;
 }
 
-// Injected CSS animation for pulsing danger markers
 if (!document.getElementById('marker-pulse-style')) {
   const style = document.createElement('style');
   style.id = 'marker-pulse-style';

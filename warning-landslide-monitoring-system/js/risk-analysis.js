@@ -1,5 +1,5 @@
 /* =========================================================
-   risk-analysis.js — Dual Mode: Citizen Safety & Geotech AI
+   risk-analysis.js — Citizen-Friendly NER District Risk Engine
    ========================================================= */
 
 initShell({ active: 'risk-analysis.html', title: 'Risk Analysis', crumb: 'Monitor / Risk Analysis' });
@@ -63,45 +63,36 @@ function setRAneedle(score) {
   }
 }
 
-// ---------------- 1. CITIZEN UI UPGRADE: AUTO DISTRICT SELECTOR + GPS DETECTOR ----------------
+// ---------------- 1. CITIZEN UI UPGRADE: AUTO DISTRICT SELECTOR ----------------
 function upgradeToCitizenSelector() {
   const locInput = document.getElementById('in-location');
   if (!locInput || locInput.tagName.toLowerCase() === 'select') return;
 
   const parent = locInput.parentElement;
   
-  // Replace text input with rich dropdown
+  // Replace text input with clean dark dropdown
   const select = document.createElement('select');
   select.id = 'in-location';
   select.className = locInput.className || 'input';
-  select.style.cssText = 'width: 100%; padding: 9px 12px; background: var(--bg-surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 6px; font-weight: 600; font-size: 14px;';
+  select.style.cssText = 'width: 100%; padding: 10px 12px; background: #1e293b; color: #f8fafc; border: 1px solid var(--border); border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer;';
 
+  // Crisp readable text for each option
   select.innerHTML = ALL_DISTRICTS.map(d => 
-    `<option value="${d.id}">${d.name}</option>`
+    `<option value="${d.id}" style="background:#1e293b; color:#f8fafc; font-weight:600; padding:8px;">${d.name}</option>`
   ).join('');
 
-  // Add "Auto-Detect My GPS" button for Citizen Mode
-  const gpsBtn = document.createElement('button');
-  gpsBtn.type = 'button';
-  gpsBtn.className = 'btn btn-outline btn-sm';
-  gpsBtn.style.cssText = 'margin-top: 8px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12.5px; border-color: #38bdf8; color: #38bdf8; cursor: pointer;';
-  gpsBtn.innerHTML = '📍 Auto-Detect My Current GPS Location';
-  gpsBtn.onclick = handleCitizenGPS;
-
-  // Add Technical Parameters helper badge
+  // Live indicator tag
   const techLabel = document.createElement('div');
   techLabel.style.cssText = 'font-size: 11.5px; color: #22c55e; margin: 10px 0 4px; display: flex; align-items: center; gap: 6px; font-weight: 600;';
   techLabel.innerHTML = '<span>●</span> Live Satellite & Geotechnical Parameters (Auto-Loaded)';
 
   parent.replaceChild(select, locInput);
-  parent.appendChild(gpsBtn);
   parent.appendChild(techLabel);
 
   select.onchange = () => {
     loadLiveTelemetryIntoForm(select.value, true);
   };
 
-  // Remove old misleading disclaimer text at bottom
   fixMisleadingDisclaimer();
 }
 
@@ -109,7 +100,6 @@ function upgradeToCitizenSelector() {
 function fixMisleadingDisclaimer() {
   const form = document.getElementById('risk-form');
   if (!form) return;
-  const p = form.querySelector('p, div[style*="font-size"]');
   const allElements = form.querySelectorAll('*');
   allElements.forEach(el => {
     if (el.textContent && el.textContent.includes('not a live ML backend')) {
@@ -122,49 +112,7 @@ function fixMisleadingDisclaimer() {
   });
 }
 
-// ---------------- 2. CITIZEN GPS AUTO-DETECT HANDLER ----------------
-function handleCitizenGPS() {
-  if (!navigator.geolocation) {
-    if (typeof toast === 'function') toast('Geolocation is not supported by your device.', 'error');
-    return;
-  }
-
-  if (typeof toast === 'function') toast('🛰️ Detecting your mountain coordinates...', 'info');
-
-  navigator.geolocation.getCurrentPosition(
-    async (pos) => {
-      const lat = pos.coords.latitude;
-      const lon = pos.coords.longitude;
-      
-      if (typeof toast === 'function') toast(`GPS Locked (${lat.toFixed(2)}, ${lon.toFixed(2)}). Querying satellites...`, 'success');
-
-      try {
-        const res = await fetch(`${API_BASE}/live-risk-by-coords?lat=${lat}&lon=${lon}`);
-        if (res.ok) {
-          const data = await res.json();
-          const telem = data.live_telemetry || {};
-          
-          if (document.getElementById('in-rainfall')) document.getElementById('in-rainfall').value = Number(telem.rainfall_24h ?? 20).toFixed(1);
-          if (document.getElementById('in-soil')) document.getElementById('in-soil').value = Number(telem.soil_moisture ?? 50).toFixed(1);
-          if (document.getElementById('in-slope')) document.getElementById('in-slope').value = '28';
-          if (document.getElementById('in-elevation')) document.getElementById('in-elevation').value = '1450';
-          if (document.getElementById('in-history')) document.getElementById('in-history').value = 'Moderate';
-
-          // Auto-trigger calculation for citizen
-          document.getElementById('risk-form').dispatchEvent(new Event('submit'));
-        }
-      } catch (err) {
-        console.warn("GPS API fallback:", err);
-      }
-    },
-    (err) => {
-      if (typeof toast === 'function') toast('Could not get GPS location: ' + err.message, 'error');
-    },
-    { enableHighAccuracy: true, timeout: 8000 }
-  );
-}
-
-// ---------------- 3. AUTO-FILL TECHNICAL PARAMETERS VIA SATELLITE ----------------
+// ---------------- 2. AUTO-FILL TECHNICAL PARAMETERS VIA SATELLITE ----------------
 async function loadLiveTelemetryIntoForm(locId, autoSubmit = false) {
   let targetId = parseInt(locId) || 2;
 
@@ -204,7 +152,7 @@ async function loadLiveTelemetryIntoForm(locId, autoSubmit = false) {
   }
 }
 
-// ---------------- 4. HUMAN READABLE CITIZEN SAFETY ADVISORY ----------------
+// ---------------- 3. HUMAN READABLE CITIZEN SAFETY ADVISORY ----------------
 function generateCitizenVerdict(score, level, primaryDriver) {
   if (score >= 75) {
     return `
@@ -252,7 +200,7 @@ function generateCitizenVerdict(score, level, primaryDriver) {
   `;
 }
 
-// ---------------- 5. FORM SUBMISSION -> FASTAPI ML INFERENCE ----------------
+// ---------------- 4. FORM SUBMISSION -> FASTAPI ML INFERENCE ----------------
 document.getElementById('risk-form').addEventListener('submit', async function(e) {
   e.preventDefault();
 
@@ -329,7 +277,7 @@ document.getElementById('risk-form').addEventListener('submit', async function(e
     }
   }
 
-  // 6. RENDER RESULTS PANEL
+  // 5. RENDER RESULTS PANEL
   const rm = (typeof riskMeta === 'function') 
     ? riskMeta(result.level) 
     : { cls: result.level === 'critical' ? 'danger' : 'warning', label: result.level.toUpperCase(), emoji: '⚠️' };
