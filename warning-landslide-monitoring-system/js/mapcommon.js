@@ -1,5 +1,5 @@
 /* =========================================================
-   mapcommon.js — Shared Leaflet Helpers for 24x7 Live GIS Map
+   mapcommon.js — Detailed Open GIS Map with State/District Labels
    ========================================================= */
 
 const RISK_HEX = { 
@@ -48,13 +48,14 @@ function reportIcon() {
   });
 }
 
-// 100% Free ESRI High-Definition Dark Canvas Tiles (Zero API Key, Zero Watermarks!)
+// 100% Free Detailed Map (Displays all Indian States, NER Districts, Roads, and Cities)
 function baseMap(elId, center, zoom) {
   const map = L.map(elId, { scrollWheelZoom: true }).setView(center || [26.0, 92.0], zoom || 6.2);
   
-  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-    attribution: '&copy; Esri &mdash; Survey of India &copy; ISRO NRSC',
-    maxZoom: 16
+  // Detailed OpenStreetMap Tiles — All districts, cities & state boundaries crystal clear!
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors &copy; Survey of India',
+    maxZoom: 18
   }).addTo(map);
 
   return map;
@@ -88,7 +89,7 @@ function locationPopupHtml(loc) {
       <div class="prow"><span>Soil Saturation</span><b>${soil}%</b></div>
       <div class="prow"><span>Slope / Elev</span><b>${slope}° / ${elev}m</b></div>
       <div class="prow"><span>Atmosphere</span><b>${weather}</b></div>
-      <div style="margin-top:8px; padding-top:6px; border-top:1px solid rgba(255,255,255,0.1); font-size:11px; color:${color}; font-weight:600;">
+      <div style="margin-top:8px; padding-top:6px; border-top:1px solid rgba(0,0,0,0.1); font-size:11px; color:${color}; font-weight:600;">
         ⚠️ ${factor}
       </div>
       <button class="btn btn-primary btn-sm btn-block" style="margin-top:10px; width:100%; cursor:pointer;" 
