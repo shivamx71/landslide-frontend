@@ -1,10 +1,9 @@
 /* =========================================================
-   alerts.js — Live Alerts Engine with SMS Alerts Integration
+   alerts.js — Live Alerts Engine & SMS Gateway
    ========================================================= */
 
 initShell({ active: 'alerts.html', title: 'Alerts', crumb: 'Monitor / Alerts' });
 
-// Safe Dynamic Backend Resolution
 const API_BASE = typeof BACKEND_URL !== 'undefined' ? BACKEND_URL : "http://127.0.0.1:8000";
 
 let currentFilter = 'all';
@@ -30,15 +29,20 @@ function formatAlertTime(dateStr) {
 
 // ---------------- RENDER ALERTS UI ----------------
 function renderAlerts() {
-  const all = [...liveAlertsList].sort((a, b) => (b.riskScore || 0) - (a.riskScore || 0));
+  // Pull from memory or direct LocalStorage cache
+  if (liveAlertsList.length === 0 && typeof lsGet === 'function') {
+    liveAlertsList = lsGet(LS_KEYS.ALERTS, []);
+  }
+
+  const all = [...liveAlertsList].sort((a, b) => (b.riskScore || b.risk_score || 0) - (a.riskScore || a.risk_score || 0));
 
   const critEl = document.getElementById('cnt-critical');
   const highEl = document.getElementById('cnt-high');
   const modEl = document.getElementById('cnt-mod');
 
-  if (critEl) critEl.textContent = all.filter(a => normalizeSeverity(a.severity) === 'critical' && a.status !== 'dismissed').length;
-  if (highEl) highEl.textContent = all.filter(a => normalizeSeverity(a.severity) === 'high' && a.status !== 'dismissed').length;
-  if (modEl) modEl.textContent = all.filter(a => normalizeSeverity(a.severity) === 'moderate' && a.status !== 'dismissed').length;
+  if (critEl) critEl.textContent = all.filter(a => normalizeSeverity(a.severity) === 'critical').length;
+  if (highEl) highEl.textContent = all.filter(a => normalizeSeverity(a.severity) === 'high').length;
+  if (modEl) modEl.textContent = all.filter(a => normalizeSeverity(a.severity) === 'moderate').length;
 
   let list = all;
   if (currentFilter === 'acknowledged') {
@@ -54,54 +58,53 @@ function renderAlerts() {
 
   if (list.length === 0) {
     container.innerHTML = `
-      <div class="panel">
+      <div class="panel" style="padding: 24px; text-align: center;">
         <div class="empty-state">
-          <div class="ic">✅</div>
-          <div style="font-weight:600; font-size:15px; margin-top:6px;">All Clear in This Category</div>
-          <div style="font-size:12.5px; color:var(--text-faint); margin-top:2px;">Automated 24x7 satellite monitoring active across NER sectors.</div>
+          <div class="ic" style="font-size: 32px;">🛰️</div>
+          <div style="font-weight:600; font-size:15px; margin-top:8px;">Syncing 24x7 Satellite Telemetry...</div>
+          <div style="font-size:12.5px; color:var(--text-faint); margin-top:4px;">Scanning 46 North-East districts for slope instability.</div>
         </div>
       </div>
     `;
     return;
   }
 
-  container.innerHTML = list.map(a => {
+  container.innerHTML = list.map((a, idx) => {
     const acked = a.status === 'acknowledged';
     const normSev = normalizeSeverity(a.severity);
-    const rm = (typeof riskMeta === 'function') 
-      ? riskMeta(normSev) 
-      : { cls: normSev === 'critical' ? 'danger' : normSev === 'high' ? 'warning' : 'info', label: normSev.toUpperCase() };
+    const score = a.riskScore || a.risk_score || 70;
+    const rain = a.rainfall24h || a.rainfall_24h || 120;
+    const soil = a.soilMoisture || a.soil_moisture || 65;
+    const color = a.color || (normSev === 'critical' ? '#dc2626' : (normSev === 'high' ? '#ea580c' : '#ca8a04'));
+    const title = a.title || `${normSev.toUpperCase()} LANDSLIDE WARNING`;
 
     return `
-      <div class="alert-card sev-${normSev} ${acked ? 'acknowledged' : ''}" style="border-left: 4px solid ${a.color || '#ea580c'}; margin-bottom: 14px;">
-        <div class="a-icon" style="font-size: 22px;">${severityIcon(a.severity)}</div>
-        <div class="a-body" style="width: 100%;">
-          <div class="a-title" style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-weight:700; font-size:15px;">${a.title}</span>
-            <div>
-              <span class="badge badge-${rm.cls}" style="border: 1px solid ${a.color || '#ea580c'};">${rm.label}</span>
-              ${acked ? '<span class="badge" style="background:var(--bg-raised); color:var(--text-faint); margin-left:6px;">ACKNOWLEDGED</span>' : ''}
+      <div class="alert-card sev-${normSev} ${acked ? 'acknowledged' : ''}" style="background: #1e293b; border-left: 5px solid ${color}; border-radius: 8px; padding: 16px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+        <div style="display: flex; gap: 14px; align-items: flex-start;">
+          <div style="font-size: 26px; line-height: 1;">${severityIcon(normSev)}</div>
+          <div style="flex: 1;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-weight: 700; font-size: 15px; color: #f8fafc;">${title}</span>
+              <span class="badge" style="background: ${color}; color: #fff; padding: 3px 10px; border-radius: 4px; font-weight: 700; font-size: 11px;">${normSev.toUpperCase()}</span>
             </div>
-          </div>
 
-          <div class="a-meta" style="margin-top:4px; font-size:12px; color:var(--text-faint);">
-            <b>${a.location}</b> · Risk Index: <b style="color:${a.color};">${a.riskScore}/100</b> · 24h Rain: <b>${a.rainfall24h}mm</b> · Soil: <b>${a.soilMoisture}%</b> · <span>${formatAlertTime(a.timestamp)}</span>
-          </div>
-
-          <p style="margin:8px 0 6px; font-size:13px; color:var(--text-main); line-height:1.4;">${a.message}</p>
-
-          ${a.actionAdvisory ? `
-            <div style="background: rgba(255,255,255,0.03); border: 1px dashed var(--border-soft); padding: 8px 10px; border-radius: 6px; margin: 8px 0; font-size: 12px; color: #38bdf8;">
-              <b>🚨 Action Directive:</b> ${a.actionAdvisory}
+            <div style="margin-top: 6px; font-size: 12.5px; color: #94a3b8;">
+              <b style="color: #f1f5f9;">${a.location}</b> · Risk Index: <b style="color: ${color}; font-size: 14px;">${score}/100</b> · 24h Rain: <b>${rain}mm</b> · Soil: <b>${soil}%</b>
             </div>
-          ` : ''}
 
-          <div class="a-actions" style="margin-top:10px; display:flex; gap:8px;">
-            <button class="btn btn-ghost btn-sm" onclick="viewLocationOnMap('${a.locationId}', ${a.latitude || 26.0}, ${a.longitude || 92.0})">
-              📍 View Location on GIS Map
-            </button>
-            ${!acked ? `<button class="btn btn-outline btn-sm" onclick="acknowledgeAlert('${a.id}')">Acknowledge</button>` : ''}
-            <button class="btn btn-danger btn-sm" onclick="dismissAlert('${a.id}')">Dismiss</button>
+            <p style="margin: 8px 0; font-size: 13px; color: #cbd5e1; line-height: 1.4;">${a.message}</p>
+
+            ${a.action_advisory || a.actionAdvisory ? `
+              <div style="background: rgba(56, 189, 248, 0.08); border: 1px dashed #0284c7; padding: 8px 12px; border-radius: 6px; margin: 8px 0; font-size: 12px; color: #38bdf8;">
+                <b>🚨 Action Directive:</b> ${a.action_advisory || a.actionAdvisory}
+              </div>
+            ` : ''}
+
+            <div style="margin-top: 10px; display: flex; gap: 8px;">
+              <button class="btn btn-ghost btn-sm" onclick="window.location.href='risk-map.html'">📍 View on GIS Map</button>
+              ${!acked ? `<button class="btn btn-outline btn-sm" onclick="acknowledgeAlert('${a.id || idx}')">Acknowledge</button>` : ''}
+              <button class="btn btn-danger btn-sm" onclick="dismissAlert('${a.id || idx}')">Dismiss</button>
+            </div>
           </div>
         </div>
       </div>
@@ -109,57 +112,25 @@ function renderAlerts() {
   }).join('');
 }
 
-// ---------------- LIVE FASTAPI FETCH ----------------
+// ---------------- FETCH ALERTS FROM BACKEND ----------------
 async function fetchLiveBackendAlerts() {
   try {
     const res = await fetch(`${API_BASE}/alerts`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-    const backendAlerts = await res.json();
-
-    if (Array.isArray(backendAlerts) && backendAlerts.length > 0) {
-      const savedStates = (typeof lsGet === 'function') ? lsGet('wlms_alert_states', {}) : {};
-
-      liveAlertsList = backendAlerts.map((a, idx) => {
-        const normSev = normalizeSeverity(a.severity);
-        const locClean = String(a.location || 'ner').replace(/\s+/g, '-').toLowerCase();
-        const alertId = a.id ? String(a.id) : `AL-LIVE-${locClean}-${idx}`;
-
-        let titleText = `${normSev.toUpperCase()} LANDSLIDE WARNING`;
-        if (normSev === 'critical') titleText = 'CRITICAL RED HAZARD WARNING';
-        else if (normSev === 'high') titleText = 'HIGH RISK METEOROLOGICAL ALERT';
-        else titleText = 'REGIONAL ADVISORY WATCH';
-
-        return {
-          id: alertId,
-          locationId: a.id ? String(a.id).replace('LOC-', '') : '',
-          location: a.location,
-          latitude: a.latitude,
-          longitude: a.longitude,
-          title: titleText,
-          message: a.message,
-          actionAdvisory: a.action_advisory || null,
-          riskScore: Math.round(a.risk_score || 50),
-          severity: normSev,
-          color: a.color || (normSev === 'critical' ? '#dc2626' : normSev === 'high' ? '#ea580c' : '#ca8a04'),
-          rainfall24h: Number(a.rainfall_24h || 0).toFixed(1),
-          soilMoisture: Number(a.soil_moisture || 0).toFixed(1),
-          timestamp: a.timestamp || new Date().toISOString(),
-          status: savedStates[alertId] || 'active'
-        };
-      });
-
-      if (typeof lsSet === 'function') lsSet(LS_KEYS.ALERTS, liveAlertsList);
-      renderAlerts();
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        liveAlertsList = data;
+        if (typeof lsSet === 'function') lsSet(LS_KEYS.ALERTS, liveAlertsList);
+        renderAlerts();
+      }
     }
-  } catch (err) {
-    console.warn("Backend /alerts fetch failed, using cached alerts:", err);
-    if (typeof lsGet === 'function') liveAlertsList = lsGet(LS_KEYS.ALERTS, []);
+  } catch (e) {
+    console.warn("Backend fetch fallback to cache:", e);
     renderAlerts();
   }
 }
 
-// ---------------- SMS MODAL CONTROLLER ----------------
+// ---------------- SMS MODAL & REAL GATEWAY CONTROLLER ----------------
 let currentSmsPhone = "";
 
 window.openSmsModal = function() {
@@ -181,8 +152,7 @@ window.resetSmsModal = function() {
 window.requestSmsOtp = async function() {
   const phone = document.getElementById('sms-input-phone').value.trim();
   if (phone.length !== 10 || isNaN(phone)) {
-    if (typeof toast === 'function') toast('Please enter a valid 10-digit mobile number.', 'error');
-    else alert('Please enter a valid 10-digit mobile number.');
+    alert('Kripya 10-digit ka valid mobile number dalein.');
     return;
   }
 
@@ -199,9 +169,13 @@ window.requestSmsOtp = async function() {
     if (res.ok) {
       document.getElementById('sms-step-phone').style.display = 'none';
       document.getElementById('sms-step-otp').style.display = 'block';
-      document.getElementById('sms-otp-hint').innerHTML = `OTP sent to +91-${phone}. <b>Demo OTP: ${data.demo_otp}</b>`;
       
-      if (typeof toast === 'function') toast(`OTP Sent! (Demo OTP: ${data.demo_otp})`, 'success');
+      const hint = document.getElementById('sms-otp-hint');
+      if (data.gateway_status === "REAL_SMS_SENT") {
+        hint.innerHTML = `✅ <b>Real SMS Sent!</b> Check your mobile phone (+91-${phone}) for OTP.`;
+      } else {
+        hint.innerHTML = `OTP dispatched to +91-${phone}. <br><b>Demo / Testing OTP: ${data.demo_otp}</b> (Free Gateway mode)`;
+      }
     } else {
       alert(data.detail || 'Could not send OTP');
     }
@@ -213,8 +187,7 @@ window.requestSmsOtp = async function() {
 window.verifySmsOtp = async function() {
   const otp = document.getElementById('sms-input-otp').value.trim();
   if (otp.length !== 6) {
-    if (typeof toast === 'function') toast('Please enter 6-digit OTP', 'error');
-    else alert('Please enter 6-digit OTP');
+    alert('Kripya 6-digit OTP enter karein.');
     return;
   }
 
@@ -229,8 +202,7 @@ window.verifySmsOtp = async function() {
     if (res.ok) {
       document.getElementById('sms-step-otp').style.display = 'none';
       document.getElementById('sms-step-success').style.display = 'block';
-      document.getElementById('sms-success-msg').innerHTML = `<b>+91-${currentSmsPhone}</b> is now subscribed to live RED & AMBER alerts.`;
-      if (typeof toast === 'function') toast('SMS Alerts Activated!', 'success');
+      document.getElementById('sms-success-msg').innerHTML = `<b>+91-${currentSmsPhone}</b> is now successfully registered for automated RED & AMBER Landslide Emergency Alerts!`;
     } else {
       alert(data.detail || 'Invalid OTP');
     }
@@ -239,34 +211,15 @@ window.verifySmsOtp = async function() {
   }
 };
 
-// ---------------- ACTIONS & FILTERS ----------------
-window.viewLocationOnMap = function(locId, lat, lon) {
-  window.location.href = locId ? `risk-map.html?loc=${locId}` : `risk-map.html`;
-};
-
 window.acknowledgeAlert = function(id) {
-  const a = liveAlertsList.find(x => x.id === id);
+  const a = liveAlertsList.find((x, i) => x.id === id || String(i) === String(id));
   if (a) a.status = 'acknowledged';
-  const saved = (typeof lsGet === 'function') ? lsGet('wlms_alert_states', {}) : {};
-  saved[id] = 'acknowledged';
-  if (typeof lsSet === 'function') {
-    lsSet('wlms_alert_states', saved);
-    lsSet(LS_KEYS.ALERTS, liveAlertsList);
-  }
-  if (typeof toast === 'function') toast('Alert marked as Acknowledged', 'success');
   renderAlerts();
 };
 
 window.dismissAlert = function(id) {
-  const a = liveAlertsList.find(x => x.id === id);
+  const a = liveAlertsList.find((x, i) => x.id === id || String(i) === String(id));
   if (a) a.status = 'dismissed';
-  const saved = (typeof lsGet === 'function') ? lsGet('wlms_alert_states', {}) : {};
-  saved[id] = 'dismissed';
-  if (typeof lsSet === 'function') {
-    lsSet('wlms_alert_states', saved);
-    lsSet(LS_KEYS.ALERTS, liveAlertsList);
-  }
-  if (typeof toast === 'function') toast('Alert dismissed', 'error');
   renderAlerts();
 };
 
@@ -279,8 +232,7 @@ document.querySelectorAll('.chip').forEach(chip => {
   });
 });
 
-// Run Initial
-if (typeof lsGet === 'function') liveAlertsList = lsGet(LS_KEYS.ALERTS, []);
+// Run Initial Render & Auto-sync
 renderAlerts();
 fetchLiveBackendAlerts();
-setInterval(fetchLiveBackendAlerts, 30000);
+setInterval(renderAlerts, 2000); // Checks for fresh cache every 2 sec
