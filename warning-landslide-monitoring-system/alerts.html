@@ -5,6 +5,44 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Alerts — Warning and Landslide Monitoring System</title>
 <link rel="stylesheet" href="css/style.css">
+<style>
+  /* SMS Modal Styling */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-card {
+    background: var(--surface, #1e293b);
+    border: 1px solid var(--border, #334155);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 440px;
+    padding: 24px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    color: var(--text, #f8fafc);
+  }
+  .sms-btn {
+    background: linear-gradient(135deg, #0284c7, #2563eb);
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: transform 0.15s ease;
+  }
+  .sms-btn:hover { transform: scale(1.02); }
+</style>
 </head>
 <body>
 <div class="app-shell">
@@ -12,12 +50,20 @@
   <div class="main-col">
     <header class="topbar" id="topbar-mount"></header>
     <main class="page">
-      <div class="page-head">
+      <div class="page-head" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:15px;">
         <div>
           <h1>Alert Dashboard</h1>
           <div class="desc">Early-warning notifications generated from risk analysis and live monitoring thresholds.</div>
         </div>
-        <div class="chip-row">
+        
+        <!-- SMS Subscription Trigger Button -->
+        <div>
+          <button class="sms-btn" onclick="openSmsModal()">
+            📱 Alerts on SMS (Get Mobile Warnings)
+          </button>
+        </div>
+
+        <div class="chip-row" style="width:100%; margin-top:12px;">
           <span class="chip active" data-filter="all">All</span>
           <span class="chip" data-filter="critical">Critical</span>
           <span class="chip" data-filter="high">High</span>
@@ -34,6 +80,54 @@
 
       <div id="alerts-list"></div>
     </main>
+  </div>
+</div>
+
+<!-- ================= SMS SUBSCRIPTION MODAL ================= -->
+<div class="modal-overlay" id="sms-modal">
+  <div class="modal-card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <h3 style="margin:0; font-size:18px; color:#38bdf8;">📱 Subscribe to Emergency SMS Alerts</h3>
+      <button onclick="closeSmsModal()" style="background:none; border:none; color:#94a3b8; font-size:20px; cursor:pointer;">&times;</button>
+    </div>
+    
+    <p style="font-size:12.5px; color:var(--text-faint); margin-bottom:16px; line-height:1.4;">
+      Receive instantaneous automated SMS text warnings on your mobile phone whenever a <b>HIGH</b> or <b>CRITICAL</b> landslide threat is detected in North-East Region.
+    </p>
+
+    <!-- STEP 1: Phone Input -->
+    <div id="sms-step-phone">
+      <label style="font-size:12px; font-weight:600; display:block; margin-bottom:6px;">Mobile Phone Number</label>
+      <div style="display:flex; gap:8px;">
+        <input type="text" value="+91" disabled style="width:50px; background:rgba(255,255,255,0.05); border:1px solid #475569; border-radius:6px; color:#fff; text-align:center;">
+        <input type="tel" id="sms-input-phone" placeholder="Enter 10-digit number" maxlength="10" style="flex:1; padding:10px; border-radius:6px; border:1px solid #475569; background:#0f172a; color:#fff;">
+      </div>
+      <button class="btn btn-primary btn-block" style="margin-top:14px;" onclick="requestSmsOtp()">
+        Send Verification OTP
+      </button>
+    </div>
+
+    <!-- STEP 2: OTP Input (Hidden by default) -->
+    <div id="sms-step-otp" style="display:none;">
+      <div style="background:rgba(56, 189, 248, 0.1); border:1px dashed #38bdf8; padding:8px; border-radius:6px; font-size:12px; margin-bottom:12px;" id="sms-otp-hint">
+        OTP has been sent to your mobile phone.
+      </div>
+      <label style="font-size:12px; font-weight:600; display:block; margin-bottom:6px;">Enter 6-Digit OTP</label>
+      <input type="text" id="sms-input-otp" placeholder="e.g. 583921" maxlength="6" style="width:100%; padding:10px; border-radius:6px; border:1px solid #475569; background:#0f172a; color:#fff; text-align:center; font-size:18px; letter-spacing:4px;">
+      
+      <div style="display:flex; gap:8px; margin-top:14px;">
+        <button class="btn btn-outline" style="flex:1;" onclick="resetSmsModal()">Back</button>
+        <button class="btn btn-success" style="flex:2;" onclick="verifySmsOtp()">Verify & Activate</button>
+      </div>
+    </div>
+
+    <!-- STEP 3: Success State -->
+    <div id="sms-step-success" style="display:none; text-align:center; padding:10px 0;">
+      <div style="font-size:40px;">✅</div>
+      <h4 style="color:#4ade80; margin:8px 0 4px;">SMS Alerts Activated!</h4>
+      <p style="font-size:12.5px; color:#94a3b8;" id="sms-success-msg">Your number is registered for automated early warnings.</p>
+      <button class="btn btn-outline btn-sm" style="margin-top:14px;" onclick="closeSmsModal()">Done</button>
+    </div>
   </div>
 </div>
 

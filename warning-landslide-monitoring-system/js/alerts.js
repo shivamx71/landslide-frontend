@@ -1,15 +1,15 @@
 /* =========================================================
-   alerts.js — 100% 24x7 Real-Time AI & Satellite Alerts Engine
+   alerts.js — Live Alerts Engine with SMS Alerts Integration
    ========================================================= */
 
 initShell({ active: 'alerts.html', title: 'Alerts', crumb: 'Monitor / Alerts' });
 
-const API_BASE = typeof BACKEND_URL !== 'undefined' ? BACKEND_URL : "https://sih-landslide-backend-kzl9.onrender.com";
+// Safe Dynamic Backend Resolution
+const API_BASE = typeof BACKEND_URL !== 'undefined' ? BACKEND_URL : "http://127.0.0.1:8000";
 
 let currentFilter = 'all';
 let liveAlertsList = [];
 
-// Normalize severity strings to: 'critical', 'high', 'moderate', 'low'
 function normalizeSeverity(sev = '') {
   const s = String(sev).toLowerCase();
   if (s.includes('critical') || s.includes('seismic') || s.includes('red')) return 'critical';
@@ -23,15 +23,8 @@ function severityIcon(sev) {
   return { critical: '🚨', high: '⚠️', moderate: '🟡', low: '🟢' }[s] || '⚠️';
 }
 
-// Format Relative Time or Exact Timestamp
 function formatAlertTime(dateStr) {
   if (!dateStr) return 'Just now';
-  if (typeof timeAgo === 'function') {
-    try {
-      const parsed = new Date(dateStr);
-      if (!isNaN(parsed.getTime())) return timeAgo(dateStr);
-    } catch (e) {}
-  }
   return dateStr;
 }
 
@@ -39,14 +32,13 @@ function formatAlertTime(dateStr) {
 function renderAlerts() {
   const all = [...liveAlertsList].sort((a, b) => (b.riskScore || 0) - (a.riskScore || 0));
 
-  // Count Badges Update
   const critEl = document.getElementById('cnt-critical');
   const highEl = document.getElementById('cnt-high');
   const modEl = document.getElementById('cnt-mod');
 
-  if (critEl) critEl.textContent = all.filter(a => normalizeSeverity(a.severity) === 'critical' && a.status === 'active').length;
-  if (highEl) highEl.textContent = all.filter(a => normalizeSeverity(a.severity) === 'high' && a.status === 'active').length;
-  if (modEl) modEl.textContent = all.filter(a => normalizeSeverity(a.severity) === 'moderate' && a.status === 'active').length;
+  if (critEl) critEl.textContent = all.filter(a => normalizeSeverity(a.severity) === 'critical' && a.status !== 'dismissed').length;
+  if (highEl) highEl.textContent = all.filter(a => normalizeSeverity(a.severity) === 'high' && a.status !== 'dismissed').length;
+  if (modEl) modEl.textContent = all.filter(a => normalizeSeverity(a.severity) === 'moderate' && a.status !== 'dismissed').length;
 
   let list = all;
   if (currentFilter === 'acknowledged') {
@@ -66,7 +58,7 @@ function renderAlerts() {
         <div class="empty-state">
           <div class="ic">✅</div>
           <div style="font-weight:600; font-size:15px; margin-top:6px;">All Clear in This Category</div>
-          <div style="font-size:12.5px; color:var(--text-faint); margin-top:2px;">Automated 24x7 satellite radar monitoring is actively scanning NER sectors.</div>
+          <div style="font-size:12.5px; color:var(--text-faint); margin-top:2px;">Automated 24x7 satellite monitoring active across NER sectors.</div>
         </div>
       </div>
     `;
@@ -117,16 +109,15 @@ function renderAlerts() {
   }).join('');
 }
 
-// ---------------- LIVE FASTAPI BACKEND FETCH (/alerts) ----------------
+// ---------------- LIVE FASTAPI FETCH ----------------
 async function fetchLiveBackendAlerts() {
   try {
-    const res = await fetch(`${API_BASE}/alerts?threshold=35`);
+    const res = await fetch(`${API_BASE}/alerts`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const backendAlerts = await res.json();
-    console.log(">>> [24x7 REAL-TIME ALERTS]:", backendAlerts);
 
-    if (Array.isArray(backendAlerts)) {
+    if (Array.isArray(backendAlerts) && backendAlerts.length > 0) {
       const savedStates = (typeof lsGet === 'function') ? lsGet('wlms_alert_states', {}) : {};
 
       liveAlertsList = backendAlerts.map((a, idx) => {
@@ -135,15 +126,9 @@ async function fetchLiveBackendAlerts() {
         const alertId = a.id ? String(a.id) : `AL-LIVE-${locClean}-${idx}`;
 
         let titleText = `${normSev.toUpperCase()} LANDSLIDE WARNING`;
-        if (a.primary_factor && a.primary_factor.includes('Tremor')) {
-          titleText = 'SEISMIC GROUND-MOTION ALERT';
-        } else if (normSev === 'critical') {
-          titleText = 'CRITICAL RED HAZARD WARNING';
-        } else if (normSev === 'high') {
-          titleText = 'HIGH RISK METEOROLOGICAL ALERT';
-        } else {
-          titleText = 'REGIONAL ADVISORY WATCH';
-        }
+        if (normSev === 'critical') titleText = 'CRITICAL RED HAZARD WARNING';
+        else if (normSev === 'high') titleText = 'HIGH RISK METEOROLOGICAL ALERT';
+        else titleText = 'REGIONAL ADVISORY WATCH';
 
         return {
           id: alertId,
@@ -168,32 +153,106 @@ async function fetchLiveBackendAlerts() {
       renderAlerts();
     }
   } catch (err) {
-    console.warn("Alerts API cold-starting/offline, local cache retained:", err);
+    console.warn("Backend /alerts fetch failed, using cached alerts:", err);
     if (typeof lsGet === 'function') liveAlertsList = lsGet(LS_KEYS.ALERTS, []);
     renderAlerts();
   }
 }
 
-// Navigation to Map Page
-window.viewLocationOnMap = function(locId, lat, lon) {
-  if (locId) {
-    window.location.href = `risk-map.html?loc=${locId}`;
-  } else {
-    window.location.href = `risk-map.html`;
+// ---------------- SMS MODAL CONTROLLER ----------------
+let currentSmsPhone = "";
+
+window.openSmsModal = function() {
+  document.getElementById('sms-modal').style.display = 'flex';
+  resetSmsModal();
+};
+
+window.closeSmsModal = function() {
+  document.getElementById('sms-modal').style.display = 'none';
+};
+
+window.resetSmsModal = function() {
+  document.getElementById('sms-step-phone').style.display = 'block';
+  document.getElementById('sms-step-otp').style.display = 'none';
+  document.getElementById('sms-step-success').style.display = 'none';
+  document.getElementById('sms-input-otp').value = "";
+};
+
+window.requestSmsOtp = async function() {
+  const phone = document.getElementById('sms-input-phone').value.trim();
+  if (phone.length !== 10 || isNaN(phone)) {
+    if (typeof toast === 'function') toast('Please enter a valid 10-digit mobile number.', 'error');
+    else alert('Please enter a valid 10-digit mobile number.');
+    return;
   }
+
+  currentSmsPhone = phone;
+
+  try {
+    const res = await fetch(`${API_BASE}/alerts/sms/send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone_number: phone })
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      document.getElementById('sms-step-phone').style.display = 'none';
+      document.getElementById('sms-step-otp').style.display = 'block';
+      document.getElementById('sms-otp-hint').innerHTML = `OTP sent to +91-${phone}. <b>Demo OTP: ${data.demo_otp}</b>`;
+      
+      if (typeof toast === 'function') toast(`OTP Sent! (Demo OTP: ${data.demo_otp})`, 'success');
+    } else {
+      alert(data.detail || 'Could not send OTP');
+    }
+  } catch (e) {
+    alert("Backend SMS service is offline. Make sure backend is running.");
+  }
+};
+
+window.verifySmsOtp = async function() {
+  const otp = document.getElementById('sms-input-otp').value.trim();
+  if (otp.length !== 6) {
+    if (typeof toast === 'function') toast('Please enter 6-digit OTP', 'error');
+    else alert('Please enter 6-digit OTP');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/alerts/sms/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone_number: currentSmsPhone, otp: otp })
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      document.getElementById('sms-step-otp').style.display = 'none';
+      document.getElementById('sms-step-success').style.display = 'block';
+      document.getElementById('sms-success-msg').innerHTML = `<b>+91-${currentSmsPhone}</b> is now subscribed to live RED & AMBER alerts.`;
+      if (typeof toast === 'function') toast('SMS Alerts Activated!', 'success');
+    } else {
+      alert(data.detail || 'Invalid OTP');
+    }
+  } catch (e) {
+    alert("Could not verify OTP. Please try again.");
+  }
+};
+
+// ---------------- ACTIONS & FILTERS ----------------
+window.viewLocationOnMap = function(locId, lat, lon) {
+  window.location.href = locId ? `risk-map.html?loc=${locId}` : `risk-map.html`;
 };
 
 window.acknowledgeAlert = function(id) {
   const a = liveAlertsList.find(x => x.id === id);
   if (a) a.status = 'acknowledged';
-  
-  const savedStates = (typeof lsGet === 'function') ? lsGet('wlms_alert_states', {}) : {};
-  savedStates[id] = 'acknowledged';
+  const saved = (typeof lsGet === 'function') ? lsGet('wlms_alert_states', {}) : {};
+  saved[id] = 'acknowledged';
   if (typeof lsSet === 'function') {
-    lsSet('wlms_alert_states', savedStates);
+    lsSet('wlms_alert_states', saved);
     lsSet(LS_KEYS.ALERTS, liveAlertsList);
   }
-
   if (typeof toast === 'function') toast('Alert marked as Acknowledged', 'success');
   renderAlerts();
 };
@@ -201,19 +260,16 @@ window.acknowledgeAlert = function(id) {
 window.dismissAlert = function(id) {
   const a = liveAlertsList.find(x => x.id === id);
   if (a) a.status = 'dismissed';
-
-  const savedStates = (typeof lsGet === 'function') ? lsGet('wlms_alert_states', {}) : {};
-  savedStates[id] = 'dismissed';
+  const saved = (typeof lsGet === 'function') ? lsGet('wlms_alert_states', {}) : {};
+  saved[id] = 'dismissed';
   if (typeof lsSet === 'function') {
-    lsSet('wlms_alert_states', savedStates);
+    lsSet('wlms_alert_states', saved);
     lsSet(LS_KEYS.ALERTS, liveAlertsList);
   }
-
-  if (typeof toast === 'function') toast('Alert dismissed from active queue', 'error');
+  if (typeof toast === 'function') toast('Alert dismissed', 'error');
   renderAlerts();
 };
 
-// Filter Chip Click Listeners
 document.querySelectorAll('.chip').forEach(chip => {
   chip.addEventListener('click', () => {
     document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
@@ -223,11 +279,8 @@ document.querySelectorAll('.chip').forEach(chip => {
   });
 });
 
-// ---------------- INITIAL RUN & 24x7 POLLING ----------------
+// Run Initial
 if (typeof lsGet === 'function') liveAlertsList = lsGet(LS_KEYS.ALERTS, []);
 renderAlerts();
-
 fetchLiveBackendAlerts();
-
-// 24x7 Auto-refresh every 30 seconds
 setInterval(fetchLiveBackendAlerts, 30000);
